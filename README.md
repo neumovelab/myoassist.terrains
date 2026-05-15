@@ -1,6 +1,6 @@
 # myoassist_terrains
 
-**Modular procedural terrain generator for MuJoCo, designed to be consumed by [MyoAssist](https://github.com/) and other musculoskeletal-simulation projects.**
+**Modular procedural terrain generator for MuJoCo, designed to be used by [MyoAssist](https://github.com/neumovelab/myoassist) and other musculoskeletal-simulation projects within [MyoSuite](https://myosuite.readthedocs.io/en/latest/).**
 
 `myoassist_terrains` turns a small JSON description of a grid layout into a
 ready-to-include MuJoCo MJCF fragment containing tiles, connectors, materials
@@ -11,7 +11,7 @@ and a single shared texture for uniform-palette terrains.
 This package follows the same modeling idea as [NVIDIA Isaac Lab's terrains
 API](https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.terrains.html):
 small composable sub-terrains arranged on a grid, importable into any
-consumer model.
+user model.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -31,7 +31,7 @@ consumer model.
 - [Configuration schema](#configuration-schema)
 - [CLI reference](#cli-reference)
 - [Python API](#python-api)
-- [Project layout for consumers](#project-layout-for-consumers)
+- [Project layout for users](#project-layout-for-users)
 - [Utilities and example configs](#utilities-and-example-configs)
 - [Extending: adding a custom tile type](#extending-adding-a-custom-tile-type)
 - [Development](#development)
@@ -40,7 +40,7 @@ consumer model.
 
 ## Installation
 
-The package is published as a normal Python package and is consumed via
+The package is published as a normal Python package and is utilized via
 `pip install -e .` (editable) or `pip install .` for a frozen build.
 
 ```bash
@@ -79,16 +79,16 @@ Author a config:
 Build it from a project that contains a `terrain_config.xml` pointer:
 
 ```bash
-cd my_consumer_project        # contains terrain_config.xml + terrain_style.xml
+cd my_user_project        # contains terrain_config.xml + terrain_style.xml
 myoassist-terrains build path/to/first_terrain.json --activate
 ```
 
 The CLI writes `terrain/first_terrain.xml` into the project directory and (with
 `--activate`) updates the `<include file="terrain/first_terrain.xml"/>` line in
-`terrain_config.xml`. Any consumer model that includes `terrain_config.xml`
+`terrain_config.xml`. Any user model that includes `terrain_config.xml`
 now sees the new terrain.
 
-Preview it without a consumer model:
+Preview it without a user model:
 
 ```bash
 myoassist-terrains preview first_terrain
@@ -343,7 +343,7 @@ myoassist-terrains set-active <terrain_name>
 # List all terrains in the current project's terrain library, marking the active one.
 myoassist-terrains list
 
-# Emit a <mujoco>-rooted wrapper that loads ONLY the terrain (no consumer model).
+# Emit a <mujoco>-rooted wrapper that loads ONLY the terrain (no user model).
 # Useful for visual QC.
 myoassist-terrains preview <terrain_name>
 ```
@@ -387,12 +387,12 @@ Stable public surface:
 
 ---
 
-## Project layout for consumers
+## Project layout for users
 
-A consuming project (e.g. a MyoAssist model repo) is expected to look like:
+Project structure (e.g. a MyoAssist model repo) is expected to look like:
 
 ```
-my_consumer_project/
+my_user_project/
 ├── terrain_config.xml        # active-terrain pointer; chains style + terrain
 ├── terrain_style.xml         # user-editable visuals (skybox, fog, lights)
 ├── terrain/                  # output of `myoassist-terrains build`
@@ -401,10 +401,10 @@ my_consumer_project/
 │   ├── my_scene_rough_r1c0.png   # hfield assets for rough tiles
 │   └── ...
 └── models/
-    └── my_model.xml          # consumer model; includes terrain_config.xml
+    └── my_model.xml          # user model; includes terrain_config.xml
 ```
 
-The consumer model includes the active-terrain pointer like:
+The user model includes the active-terrain pointer like:
 
 ```xml
 <mujoco model="my_model">
@@ -425,7 +425,7 @@ The consumer model includes the active-terrain pointer like:
 **Path resolution note.** MuJoCo resolves nested `<include>` paths relative to
 the **top-level model file's directory**, not relative to the file containing
 the `<include>`. The `../` prefix climbs out of the model directory before
-descending into `terrain/`. The bundled templates assume the consumer model
+descending into `terrain/`. The bundled templates assume the user model
 lives one level below the project root.
 
 See `utils/style/` for a working `terrain_config.xml` /
@@ -436,7 +436,7 @@ default base config.
 
 ## Utilities and example configs
 
-The `utils/` tree ships ready-to-use JSON configs, consumer-side style/asset
+The `utils/` tree ships ready-to-use JSON configs, user-side style/asset
 templates, and standalone helper scripts:
 
 | Path | What it is |
