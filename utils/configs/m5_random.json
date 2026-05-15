@@ -1,0 +1,26 @@
+{
+  "terrain_name": "m5_random",
+  "grid": { "rows": 4, "cols": 4, "tile_size": [10.0, 10.0] },
+  "border": { "width": 0.5, "match_mode": "min" },
+  "palette_preset": "diverse",
+  "randomization": {
+    "seed": 42,
+    "weights": {
+      "flat":               0.10,
+      "stairs":             0.15,
+      "pyramid_stairs":     0.10,
+      "slope":              0.15,
+      "rough":              0.15,
+      "discrete_obstacles": 0.10,
+      "stepping_stones":    0.10,
+      "boulders":           0.10,
+      "gap":                0.05
+    },
+    "param_ranges": {
+      "rough":  { "vertical_relief": [0.4, 1.0] },
+      "stairs": { "n_steps": [4, 10] },
+      "slope":  { "angle_deg": [8.0, 18.0] },
+      "gap":    { "gap_width": [0.3, 0.8] }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "terrain_name": "flat_smoke_test",
+  "grid": { "rows": 2, "cols": 2, "tile_size": [10.0, 10.0] },
+  "border": { "width": 0.5, "match_mode": "min" },
+  "palette_preset": "diverse",
+  "tiles": [
+    { "row": 0, "col": 0, "type": "flat", "params": { "height": 0.0 } },
+    { "row": 0, "col": 1, "type": "flat", "params": { "height": 0.5 } },
+    { "row": 1, "col": 0, "type": "flat", "params": { "height": 0.0 } },
+    { "row": 1, "col": 1, "type": "flat", "params": { "height": 0.3 } }
+  ]
+}

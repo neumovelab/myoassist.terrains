@@ -1,0 +1,20 @@
+{
+  "terrain_name": "m5_mixed",
+  "grid": { "rows": 3, "cols": 3, "tile_size": [10.0, 10.0] },
+  "border": { "width": 0.5, "match_mode": "min" },
+  "palette_preset": "diverse",
+  "tiles": [
+    { "row": 1, "col": 1, "type": "flat", "params": { "height": 0.0 } }
+  ],
+  "randomization": {
+    "seed": 17,
+    "weights": {
+      "rough":              0.30,
+      "discrete_obstacles": 0.20,
+      "stepping_stones":    0.20,
+      "boulders":           0.15,
+      "stairs":             0.10,
+      "slope":              0.05
+    }
+  }
+}
