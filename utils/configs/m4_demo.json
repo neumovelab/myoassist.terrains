@@ -1,0 +1,19 @@
+{
+  "terrain_name": "m4_demo",
+  "grid": { "rows": 3, "cols": 3, "tile_size": [10.0, 10.0] },
+  "border": { "width": 0.5, "match_mode": "min" },
+  "palette_preset": "diverse",
+  "tiles": [
+    { "row": 0, "col": 0, "type": "flat",               "params": { "height": 0.0 } },
+    { "row": 0, "col": 1, "type": "stairs",             "params": { "n_steps": 6, "step_height": 0.18, "axis": "y", "peak_width": 0.6 } },
+    { "row": 0, "col": 2, "type": "pyramid_stairs",     "params": { "n_steps": 5, "step_height": 0.18, "step_width": 0.6, "outer_margin": 0.5 } },
+
+    { "row": 1, "col": 0, "type": "slope",              "params": { "angle_deg": 12.0, "axis": "y", "plateau_ratio": 0.10 } },
+    { "row": 1, "col": 1, "type": "rough",              "params": { "seed": 7, "vertical_relief": 0.8 } },
+    { "row": 1, "col": 2, "type": "discrete_obstacles", "params": { "seed": 3, "density": 0.5 } },
+
+    { "row": 2, "col": 0, "type": "stepping_stones",    "params": { "rows": 4, "cols": 4, "stone_size": 0.7, "stone_height": 0.25, "seed": 11 } },
+    { "row": 2, "col": 1, "type": "boulders",           "params": { "seed": 5, "density": 0.4 } },
+    { "row": 2, "col": 2, "type": "gap",                "params": { "gap_width": 0.6, "axis": "y" } }
+  ]
+}

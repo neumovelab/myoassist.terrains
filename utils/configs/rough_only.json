@@ -1,0 +1,9 @@
+{
+  "terrain_name": "rough_only",
+  "grid": { "rows": 1, "cols": 1, "tile_size": [12.0, 12.0] },
+  "border": { "width": 0.0, "match_mode": "min" },
+  "palette_preset": "diverse",
+  "tiles": [
+    { "row": 0, "col": 0, "type": "rough", "params": { "seed": 7, "vertical_relief": 0.6, "grid_resolution": 256, "num_pits": 14, "num_hills": 18 } }
+  ]
+}

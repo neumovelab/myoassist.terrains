@@ -1,0 +1,19 @@
+{
+  "terrain_name": "m3_demo",
+  "grid": { "rows": 3, "cols": 3, "tile_size": [10.0, 10.0] },
+  "border": { "width": 0.5, "match_mode": "min" },
+  "palette_preset": "diverse",
+  "tiles": [
+    { "row": 0, "col": 0, "type": "rough",  "params": { "seed": 1, "vertical_relief": 0.5, "num_pits": 14, "num_hills": 18 } },
+    { "row": 0, "col": 1, "type": "stairs", "params": { "n_steps": 5, "step_height": 0.18, "step_width": 0.4, "axis": "y", "peak_width": 0.4 } },
+    { "row": 0, "col": 2, "type": "rough",  "params": { "seed": 2, "vertical_relief": 0.7 } },
+
+    { "row": 1, "col": 0, "type": "slope",  "params": { "angle_deg": 15.0, "axis": "y", "plateau_ratio": 0.10 } },
+    { "row": 1, "col": 1, "type": "flat",   "params": { "height": 0.0 } },
+    { "row": 1, "col": 2, "type": "slope",  "params": { "angle_deg": 8.0, "axis": "y", "plateau_ratio": 0.20 } },
+
+    { "row": 2, "col": 0, "type": "rough",  "params": { "seed": 3, "vertical_relief": 0.4, "num_pits": 8, "num_hills": 8 } },
+    { "row": 2, "col": 1, "type": "stairs", "params": { "n_steps": 8, "step_height": 0.12, "step_width": 0.3, "axis": "x", "peak_width": 0.3 } },
+    { "row": 2, "col": 2, "type": "slope",  "params": { "angle_deg": 12.0, "axis": "x", "plateau_ratio": 0.15 } }
+  ]
+}

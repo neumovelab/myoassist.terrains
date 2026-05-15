@@ -1,0 +1,33 @@
+<!-- =================================================
+    Copyright 2025 NeuMove Laboratory, Northeastern University
+    Model   :: Terrain Style (myoassist-terrains)
+    Author  :: Calder Robbins (robbins.cal@northeastern.edu)
+    License :: Apache 2.0
+====================================================== -->
+<!--
+  Style-only include for terrain scenes: skybox, materials, visual
+  parameters (haze, zfar, render globals), and the directional light.
+  No terrain geometry is declared here.
+
+  Imported by terrain_config.xml ahead of any generated or legacy terrain
+  content. Hand-edited; persists across regeneration of terrain content.
+-->
+
+<mujocoinclude>
+    <asset>
+        <material name="terrain_mat" rgba="0.75 0.75 0.75 1" texuniform="true"/>
+        <texture type="skybox" builtin="gradient" rgb1="0.78 0.78 0.78" rgb2="1 1 1" width="512" height="3072"/>
+    </asset>
+
+    <visual>
+        <!-- <headlight diffuse="0.4 0.4 0.4" ambient="0.3 0.3 0.3" specular="0.9 0.9 0.9"/> -->
+        <rgba fog="0.9 0.9 0.9 1.0" haze="0.2 0.2 0.2 1" actuator="0.7 0.4 0.4 1" actuatorpositive="1.5 0.5 0.5 1" actuatornegative="1 0 0 1"/>
+        <map fogstart="10" fogend="25" haze="1.0" zfar="75.0"/>
+        <global azimuth="140" elevation="-20"/>
+    </visual>
+
+    <worldbody>
+        <light dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" pos="0 -3 3" mode="trackcom"/>
+        <light dir="1 0 0" directional="true" diffuse="0.3 0.3 0.3" specular="0.3 0.3 0.3" pos="0 -3 3" mode="trackcom"/>
+    </worldbody>
+</mujocoinclude>

@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "myoassist-terrains"
+version = "0.1.0"
+description = "Modular procedural terrain generator for MuJoCo musculoskeletal simulation, designed to be consumed by MyoAssist."
+readme = "README.md"
+authors = [{ name = "NeuMove Laboratory, Northeastern University" }]
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+keywords = ["mujoco", "terrain", "procedural-generation", "musculoskeletal", "robotics", "biomechanics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+    "mujoco>=3.3.3",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+render = [
+    "mediapy>=1.2",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[project.scripts]
+myoassist-terrains = "myoassist_terrains.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/neumove/myoassist.terrains"
+Issues = "https://github.com/neumove/myoassist.terrains/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["myoassist_terrains*"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"
