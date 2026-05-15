@@ -1,5 +1,0 @@
-{
-  "permissions": {
-    "allow": ["Bash", "Edit", "Write", "Glob", "Grep", "Read", "MultiEdit"]
-  }
-}
