@@ -1,4 +1,4 @@
-# myoassist_terrains
+# myoassist.terrains
 
 **Modular procedural terrain generator for MuJoCo, designed to be used by [MyoAssist](https://github.com/neumovelab/myoassist) and other musculoskeletal-simulation projects within [MyoSuite](https://myosuite.readthedocs.io/en/latest/).**
 
@@ -7,11 +7,6 @@ ready-to-include MuJoCo MJCF fragment containing tiles, connectors, materials
 and (optionally) heightfield assets. It supports explicit per-cell placement,
 weighted-random sampling per cell, parametric variation of every tile type,
 and a single shared texture for uniform-palette terrains.
-
-This package follows the same modeling idea as [NVIDIA Isaac Lab's terrains
-API](https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.terrains.html):
-small composable sub-terrains arranged on a grid, importable into any
-user model.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
