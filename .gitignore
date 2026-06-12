@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Render outputs / generated artifacts
+utils/render/images/
+utils/render/terrain_only/
+utils/render/velocity_map/
+utils/render/debug_ensemble_scene.xml
+
+# Personal smoke-test render config (machine-specific scene)
+utils/render/myoassist_dephy_smoke_config.json
