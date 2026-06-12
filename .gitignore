@@ -223,5 +223,12 @@ utils/render/terrain_only/
 utils/render/velocity_map/
 utils/render/debug_ensemble_scene.xml
 
-# Personal smoke-test render config (machine-specific scene)
+# Personal render config (machine-specific scene)
 utils/render/myoassist_dephy_smoke_config.json
+utils/render/26muscle_3D
+utils/render/mesh
+utils/render/terrain_config.xml
+utils/render/myoassist_ensemble_terrain_assets
+utils/render/myoassist_ensemble_tiled_terrain_assets
+utils/render/myoassist_ensemble_config.json
+utils/render/myoassist_ensemble_tiled_config.json
