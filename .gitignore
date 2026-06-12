@@ -225,3 +225,18 @@ utils/render/debug_ensemble_scene.xml
 
 # Personal smoke-test render config (machine-specific scene)
 utils/render/myoassist_dephy_smoke_config.json
+
+# Local ensemble-render scaffolding (symlinks into sibling repo + utils/style,
+# generated ensemble configs, and built terrain library). All reproducible:
+# rebuild terrain via `myoassist-terrains build`, recreate symlinks, then
+# run _build_ensemble_config.py + render_ensemble.py.
+utils/render/26muscle_3D
+utils/render/mesh
+utils/render/CONCRETE.png
+utils/render/terrain
+utils/render/terrain_config.xml
+utils/render/terrain_style.xml
+utils/render/terrain_tiled_config.xml
+utils/render/myoassist_ensemble_config.json
+utils/render/myoassist_ensemble_tiled_config.json
+utils/style/terrain/
