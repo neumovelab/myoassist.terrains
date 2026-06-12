@@ -159,8 +159,11 @@ class TemplateModel:
             name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_KEY, key_id)
             if not name:
                 continue
-            start = key_id * self.nq
-            self.key_qpos[name] = self.model.key_qpos[start:start + self.nq].copy()
+            if self.model.key_qpos.ndim == 2:
+                self.key_qpos[name] = self.model.key_qpos[key_id].copy()
+            else:
+                start = key_id * self.nq
+                self.key_qpos[name] = self.model.key_qpos[start:start + self.nq].copy()
         self.joint_qposadr: Dict[str, int] = {}
         for joint_id in range(self.model.njnt):
             name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_id)
@@ -749,5 +752,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 
