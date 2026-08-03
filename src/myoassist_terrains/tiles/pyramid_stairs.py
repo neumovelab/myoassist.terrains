@@ -11,9 +11,9 @@ boundary contract); the pyramid rises from inside the tile.
 Walkability: every level forms a square ring around the next, so a model
 can walk up one side and back down any other.
 
-v1 only supports the rising form. Inverted (pit) pyramids are deferred to
-v2 because they require cutting holes in the base slab, which is not
-straightforward with box geoms.
+Both forms are supported: the default rising pyramid, and, with
+`inverted=True`, a stepped pit that descends into the base slab (its floor
+is checked to stay above `BASELINE_Z`).
 """
 
 from __future__ import annotations

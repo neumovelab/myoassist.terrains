@@ -26,6 +26,7 @@ dependencies = [
     "mujoco>=3.3.3",
     "numpy>=1.24",
     "scipy>=1.10",
+    "Pillow>=9.0",
 ]
 
 [project.optional-dependencies]
@@ -41,8 +42,8 @@ dev = [
 myoassist-terrains = "myoassist_terrains.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/neumove/myoassist.terrains"
-Issues = "https://github.com/neumove/myoassist.terrains/issues"
+Homepage = "https://github.com/neumovelab/myoassist.terrains"
+Issues = "https://github.com/neumovelab/myoassist.terrains/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
