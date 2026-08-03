@@ -1,0 +1,31 @@
+<!-- =================================================
+    Copyright 2025 NeuMove Laboratory, Northeastern University
+    Model   :: Terrain Style (myoassist-terrains / render)
+    Author  :: Calder Robbins (robbins.cal@northeastern.edu)
+    License :: Apache 2.0
+====================================================== -->
+<!--
+  Copy of utils/style/terrain_style.xml, placed here so the model XMLs in
+  26muscle_3D/ (which chain-include ../terrain_config.xml) compile standalone
+  when loaded by render_ensemble's TemplateModel. The terrain actually drawn
+  in a render comes from the config's "terrain_build" block, not this file.
+  Keep in sync with utils/style/terrain_style.xml if you change styling.
+-->
+
+<mujocoinclude>
+    <asset>
+        <material name="terrain_mat" rgba="0.792 0.996 1 1" texuniform="true"/>
+        <texture type="skybox" builtin="gradient" rgb1="1 1 1" rgb2="1 1 1" width="512" height="3072"/>
+    </asset>
+
+    <visual>
+        <rgba fog="0.99 0.99 0.99 0.95" haze="0.2 0.2 0.2 1" actuator="0.7 0.4 0.4 1" actuatorpositive="1.5 0.5 0.5 1" actuatornegative="1 0 0 1"/>
+        <map fogstart="12" fogend="20" haze="1.0" zfar="75.0"/>
+        <global azimuth="140" elevation="-20"/>
+    </visual>
+
+    <worldbody>
+        <light dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" pos="0 -3 3" mode="trackcom"/>
+        <light dir="1 0 0" directional="true" diffuse="0.3 0.3 0.3" specular="0.3 0.3 0.3" pos="0 -3 3" mode="trackcom"/>
+    </worldbody>
+</mujocoinclude>

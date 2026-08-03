@@ -25,6 +25,12 @@ import mediapy as media
 import mujoco
 import numpy as np
 
+from myoassist_terrains import build_terrain
+from myoassist_terrains.composer import emit_xml_include
+from myoassist_terrains.config import load_config
+from myoassist_terrains.velocity_arrows import add_velocity_overlay
+from myoassist_terrains.velocity_map import generate_velocity_map
+
 
 def _find_elements_with_class(node: ET.Element, class_name: str, path: str = "") -> List[str]:
     """Recursively find all elements that reference a specific class."""
@@ -144,6 +150,70 @@ def _gather_terrain_content(file_path: Path, consumer_dir: Path) -> Dict[str, Li
     return {"assets": assets, "world": world_children, "visual": visual_children}
 
 
+def _build_styled_terrain(
+    terrain_json: Path,
+    style_xml: Path,
+    work_dir: Path,
+) -> Dict[str, List[ET.Element]]:
+    """Build styled terrain content from a JSON terrain config.
+
+    Mirrors render_velocity_map.py: builds the procedural terrain spec from
+    the config, emits it as an include fragment with absolute hfield/texture
+    prefixes (so the PNGs resolve regardless of where the scene compiles),
+    then layers in the skybox / materials / visual / lights from
+    terrain_style.xml. Returns the same {assets, world, visual} shape as
+    _load_terrain so it drops straight into SceneBuilder.add_terrain.
+
+    This is the source of truth for the rendered terrain when a config
+    specifies "terrain_build" — it replaces the static terrain_config.xml
+    path, which only ever held a flat placeholder floor.
+    """
+    work_dir.mkdir(parents=True, exist_ok=True)
+    config = load_config(terrain_json)
+
+    # Resolve the texture file to an absolute path so build_terrain can bind
+    # it; check next to the config first, then alongside the style file.
+    if config.texture is not None:
+        raw = Path(config.texture.file)
+        candidates = [
+            raw if raw.is_absolute() else terrain_json.parent / raw,
+            style_xml.parent / raw.name,
+        ]
+        existing = next((p for p in candidates if p.exists()), None)
+        assert existing is not None, f"texture file not found for {config.texture.file!r}"
+        config.texture.file = str(existing.resolve()).replace("\\", "/")
+
+    spec = build_terrain(config, output_dir=work_dir)
+    terrain_xml = emit_xml_include(
+        spec,
+        hfield_relpath_prefix=str(work_dir.resolve()).replace("\\", "/"),
+        texture_relpath_prefix=str(style_xml.parent.resolve()).replace("\\", "/"),
+    )
+    terrain_root = ET.fromstring(terrain_xml)
+
+    assets: List[ET.Element] = []
+    world_children: List[ET.Element] = []
+    visual_children: List[ET.Element] = []
+
+    # Style first (skybox/materials/visual/lights), then generated geometry.
+    style_root = ET.parse(style_xml).getroot()
+    for child in style_root:
+        if child.tag == "asset":
+            assets.extend(list(child))
+        elif child.tag == "worldbody":
+            world_children.extend(list(child))
+        elif child.tag == "visual":
+            visual_children.extend(list(child))
+
+    for child in terrain_root:
+        if child.tag == "asset":
+            assets.extend(list(child))
+        elif child.tag == "worldbody":
+            world_children.extend(list(child))
+
+    return {"assets": assets, "world": world_children, "visual": visual_children}
+
+
 class TemplateModel:
     """Holds reusable information for a model MJCF template."""
 
@@ -159,8 +229,11 @@ class TemplateModel:
             name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_KEY, key_id)
             if not name:
                 continue
-            start = key_id * self.nq
-            self.key_qpos[name] = self.model.key_qpos[start:start + self.nq].copy()
+            if self.model.key_qpos.ndim == 2:
+                self.key_qpos[name] = self.model.key_qpos[key_id].copy()
+            else:
+                start = key_id * self.nq
+                self.key_qpos[name] = self.model.key_qpos[start:start + self.nq].copy()
         self.joint_qposadr: Dict[str, int] = {}
         for joint_id in range(self.model.njnt):
             name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_id)
@@ -414,11 +487,9 @@ def _load_config(path: Path) -> dict:
         return json.load(fh)
 
 
-def _build_scene(config_path: Path) -> None:
+def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
     config = _load_config(config_path)
     base_dir = config_path.parent
-
-    terrain_path = _resolve_path(config["terrain"], base_dir)
 
     models_cfg: List[dict] = config.get("models", [])
     if not models_cfg:
@@ -429,7 +500,21 @@ def _build_scene(config_path: Path) -> None:
     # resolve correctly when the consumer model lives one directory deeper.
     first_model_path = _resolve_path(models_cfg[0]["model"], base_dir)
     consumer_dir = first_model_path.parent
-    terrain = _load_terrain(terrain_path, consumer_dir)
+
+    # Terrain source: prefer building the real styled terrain from a JSON
+    # config ("terrain_build"); fall back to the static include XML
+    # ("terrain") for back-compat. temp_dir is where the composed scene is
+    # written for compilation (must sit next to any absolute asset paths).
+    tb_cfg = config.get("terrain_build")
+    if tb_cfg:
+        terrain_json = _resolve_path(tb_cfg["config"], base_dir)
+        style_xml = _resolve_path(tb_cfg["style"], base_dir)
+        terrain_assets_dir = base_dir / f"{config.get('scene_name', 'ensemble')}_terrain_assets"
+        terrain = _build_styled_terrain(terrain_json, style_xml, terrain_assets_dir)
+        terrain_path = None
+    else:
+        terrain_path = _resolve_path(config["terrain"], base_dir)
+        terrain = _load_terrain(terrain_path, consumer_dir)
 
     scene_name = config.get("scene_name", "ensemble_scene")
     builder = SceneBuilder(scene_name)
@@ -542,6 +627,29 @@ def _build_scene(config_path: Path) -> None:
             # Add tendons for this instance
             builder.add_model_tendons(alias, index, tendon_elements)
 
+    # Optional velocity-map overlay
+    vm_cfg = config.get("velocity_map")
+    if vm_cfg:
+        vm_terrain_path = _resolve_path(vm_cfg["terrain_config"], base_dir)
+        vm_terrain = load_config(vm_terrain_path)
+        vm_start = tuple(vm_cfg.get("start", [0.0, 0.0, 0.0]))
+        vm_goal = tuple(vm_cfg.get("goal", [1.0, 0.0, 0.0]))
+        samples = generate_velocity_map(
+            vm_terrain,
+            start=vm_start,
+            goal=vm_goal,
+            samples_per_tile=int(vm_cfg.get("samples_per_tile", 10)),
+            mode=str(vm_cfg.get("mode", "tile")),
+            tile_radial_mode=str(vm_cfg.get("tile_radial_mode", "mixed")),
+            tile_speed_jitter=float(vm_cfg.get("tile_speed_jitter", 0.0)),
+            tile_jitter_seed=int(vm_cfg.get("tile_jitter_seed", 0)),
+        )
+        add_velocity_overlay(
+            builder.worldbody_node, builder.asset_node, samples,
+            emission=float(vm_cfg.get("arrow_emission", 0.0)),
+        )
+        print(f"Velocity overlay: {len(samples)} samples across {len(vm_terrain.tiles)} tiles")
+
     # Set framebuffer size before compiling (needed for rendering)
     render_cfg = config.get("render", {})
     width = int(render_cfg.get("width", 1920))
@@ -584,8 +692,11 @@ def _build_scene(config_path: Path) -> None:
             print("ERROR: 'coll' class is referenced but not defined in defaults!")
             print("First few references:", coll_refs[:5])
 
-    # Compile the scene by writing a temporary MJCF in the terrain directory
-    temp_dir = terrain_path.parent
+    # Compile the scene by writing a temporary MJCF. In terrain_build mode all
+    # asset paths are absolute, so any writable dir works; fall back to the
+    # config dir. For the static-include path, write next to the terrain XML
+    # so its relative asset paths still resolve.
+    temp_dir = terrain_path.parent if terrain_path is not None else base_dir
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".xml", dir=temp_dir, delete=False
     ) as tmp_file:
@@ -688,8 +799,10 @@ def _build_scene(config_path: Path) -> None:
         else:
             media.show_image(image)
     else:
-        # Render from each camera
+        # Render from each camera (or just one, if --camera-index was given)
         for idx, cam_cfg in enumerate(cameras_list):
+            if camera_index is not None and idx != camera_index:
+                continue
             camera = mujoco.MjvCamera()
             
             if "pos" in cam_cfg and "xyaxes" in cam_cfg:
@@ -742,12 +855,13 @@ def _build_scene(config_path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render ensembles of MuJoCo models")
     parser.add_argument("--config", required=True, help="Path to ensemble JSON config")
+    parser.add_argument("--camera-index", type=int, default=None,
+                        help="Render only this camera (0-based) instead of all; output keeps _c{index+1}")
     args = parser.parse_args()
     config_path = Path(args.config).resolve()
-    _build_scene(config_path)
+    _build_scene(config_path, camera_index=args.camera_index)
 
 
 if __name__ == "__main__":
     main()
-
 

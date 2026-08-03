@@ -5,29 +5,37 @@
     License :: Apache 2.0
 ====================================================== -->
 <!--
-  Style-only include for terrain scenes: skybox, materials, visual
-  parameters (haze, zfar, render globals), and the directional light.
+  Style-only include for terrain scenes: skybox, floor material, visual
+  parameters (headlight, haze, render globals), and the directional light.
   No terrain geometry is declared here.
 
-  Imported by terrain_config.xml ahead of any generated or legacy terrain
+  Imported by terrain_config.xml ahead of any generated or default terrain
   content. Hand-edited; persists across regeneration of terrain content.
+
+  Style mirrors the light-blue default from a downstream project terrain
+  (myoLeg models' terrain_config.xml). `terrain_mat` is retained because the
+  generated-terrain "uniform" palette reads its rgba at build time; `matfloor`
+  is the material referenced by the shipped default terrain (terrain/default.xml).
 -->
 
 <mujocoinclude>
     <asset>
-        <material name="terrain_mat" rgba="0.75 0.75 0.75 1" texuniform="true"/>
-        <texture type="skybox" builtin="gradient" rgb1="0.78 0.78 0.78" rgb2="1 1 1" width="512" height="3072"/>
+        <!-- Uniform-palette source color for generated terrains (read at build time). -->
+        <material name="terrain_mat" rgba="0.31 0.663 0.667 1" texuniform="true"/>
+
+        <!-- Light-blue default floor + skybox. -->
+        <texture type="skybox" builtin="gradient" rgb1="0.561 0.725 0.937" rgb2="0.561 0.725 0.937" width="512" height="3072"/>
+        <texture name="texfloor" type="2d" builtin="flat" width="128" height="128" rgb1="0.561 0.725 0.937" mark="cross" markrgb="1 1 1"/>
+        <material name="matfloor" texture="texfloor" texrepeat="4 4" texuniform="true" reflectance="0.1"/>
     </asset>
 
     <visual>
-        <!-- <headlight diffuse="0.4 0.4 0.4" ambient="0.3 0.3 0.3" specular="0.9 0.9 0.9"/> -->
-        <rgba fog="0.9 0.9 0.9 1.0" haze="0.2 0.2 0.2 1" actuator="0.7 0.4 0.4 1" actuatorpositive="1.5 0.5 0.5 1" actuatornegative="1 0 0 1"/>
-        <map fogstart="10" fogend="25" haze="1.0" zfar="75.0"/>
+        <headlight diffuse="0.5 0.5 0.5" ambient="0.1 0.1 0.1" specular="0.9 0.9 0.9"/>
+        <rgba haze="0.561 0.725 0.937 1" actuator="0.7 0.4 0.4 1" actuatorpositive="1.5 0.5 0.5 1" actuatornegative="1 0 0 1"/>
         <global azimuth="140" elevation="-20"/>
     </visual>
 
     <worldbody>
-        <light dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" pos="0 -3 3" mode="trackcom"/>
-        <light dir="1 0 0" directional="true" diffuse="0.3 0.3 0.3" specular="0.3 0.3 0.3" pos="0 -3 3" mode="trackcom"/>
+        <light dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8" specular="0 0 0" pos="0 -3 3" mode="trackcom"/>
     </worldbody>
 </mujocoinclude>

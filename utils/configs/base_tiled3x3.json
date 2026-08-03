@@ -1,0 +1,1035 @@
+{
+  "terrain_name": "base_tiled3x3",
+  "grid": {
+    "rows": 9,
+    "cols": 9,
+    "tile_size": [
+      5.0,
+      5.0
+    ]
+  },
+  "border": {
+    "width": 0.8,
+    "match_mode": "min"
+  },
+  "palette_preset": "uniform",
+  "tiles": [
+    {
+      "row": 0,
+      "col": 0,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "x",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "y",
+        "inverted": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "type": "rough",
+      "params": {
+        "seed": 11,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 3,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "y",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 9
+      }
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "type": "boulders",
+      "params": {
+        "seed": 5,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    },
+    {
+      "row": 0,
+      "col": 3,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "x",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 4,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "y",
+        "inverted": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 5,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 3,
+      "type": "rough",
+      "params": {
+        "seed": 111,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 1,
+      "col": 4,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 103,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 1,
+      "col": 5,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "y",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 2,
+      "col": 3,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 109
+      }
+    },
+    {
+      "row": 2,
+      "col": 4,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 2,
+      "col": 5,
+      "type": "boulders",
+      "params": {
+        "seed": 105,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    },
+    {
+      "row": 2,
+      "col": 8,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "x",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 7,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "y",
+        "inverted": false
+      }
+    },
+    {
+      "row": 2,
+      "col": 6,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 8,
+      "type": "rough",
+      "params": {
+        "seed": 211,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 1,
+      "col": 7,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 203,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 1,
+      "col": 6,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "y",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 0,
+      "col": 8,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 209
+      }
+    },
+    {
+      "row": 0,
+      "col": 7,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 0,
+      "col": 6,
+      "type": "boulders",
+      "params": {
+        "seed": 205,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    },
+    {
+      "row": 5,
+      "col": 0,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "y",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 0,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "x",
+        "inverted": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 0,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 1,
+      "type": "rough",
+      "params": {
+        "seed": 311,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 4,
+      "col": 1,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 303,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "x",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 5,
+      "col": 2,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 309
+      }
+    },
+    {
+      "row": 4,
+      "col": 2,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 3,
+      "col": 2,
+      "type": "boulders",
+      "params": {
+        "seed": 305,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    },
+    {
+      "row": 5,
+      "col": 3,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "y",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 3,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "x",
+        "inverted": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 3,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 4,
+      "type": "rough",
+      "params": {
+        "seed": 411,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 4,
+      "col": 4,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 403,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 3,
+      "col": 4,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "x",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 5,
+      "col": 5,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 409
+      }
+    },
+    {
+      "row": 4,
+      "col": 5,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 3,
+      "col": 5,
+      "type": "boulders",
+      "params": {
+        "seed": 405,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    },
+    {
+      "row": 5,
+      "col": 6,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "y",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 4,
+      "col": 6,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "x",
+        "inverted": false
+      }
+    },
+    {
+      "row": 3,
+      "col": 6,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 5,
+      "col": 7,
+      "type": "rough",
+      "params": {
+        "seed": 511,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 4,
+      "col": 7,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 503,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 3,
+      "col": 7,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "x",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 5,
+      "col": 8,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 509
+      }
+    },
+    {
+      "row": 4,
+      "col": 8,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 3,
+      "col": 8,
+      "type": "boulders",
+      "params": {
+        "seed": 505,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    },
+    {
+      "row": 6,
+      "col": 0,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "x",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 1,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "y",
+        "inverted": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 2,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 0,
+      "type": "rough",
+      "params": {
+        "seed": 611,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 7,
+      "col": 1,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 603,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 7,
+      "col": 2,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "y",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 8,
+      "col": 0,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 609
+      }
+    },
+    {
+      "row": 8,
+      "col": 1,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 8,
+      "col": 2,
+      "type": "boulders",
+      "params": {
+        "seed": 605,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    },
+    {
+      "row": 6,
+      "col": 3,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "x",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 4,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "y",
+        "inverted": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 5,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 3,
+      "type": "rough",
+      "params": {
+        "seed": 711,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 7,
+      "col": 4,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 703,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 7,
+      "col": 5,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "y",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 8,
+      "col": 3,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 709
+      }
+    },
+    {
+      "row": 8,
+      "col": 4,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 8,
+      "col": 5,
+      "type": "boulders",
+      "params": {
+        "seed": 705,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    },
+    {
+      "row": 6,
+      "col": 8,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "y",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 7,
+      "col": 8,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "x",
+        "inverted": false
+      }
+    },
+    {
+      "row": 8,
+      "col": 8,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 6,
+      "col": 7,
+      "type": "rough",
+      "params": {
+        "seed": 811,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 7,
+      "col": 7,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 803,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 8,
+      "col": 7,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "x",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 6,
+      "col": 6,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 809
+      }
+    },
+    {
+      "row": 7,
+      "col": 6,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 8,
+      "col": 6,
+      "type": "boulders",
+      "params": {
+        "seed": 805,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    }
+  ],
+  "texture": {
+    "file": "CONCRETE.png",
+    "name": "terrain_concrete",
+    "repeat": [
+      0.5,
+      0.5
+    ],
+    "texuniform": true
+  }
+}

@@ -251,15 +251,30 @@ def main() -> None:
             "First-pass ensemble for the small myoassist_base terrain. "
             "Camera 0 is the legacy tiled-scene camera; cameras 1-3 are "
             "the user-provided framings. Re-run _build_ensemble_config.py "
-            "after editing poses to regenerate."
+            "after editing poses to regenerate. 'terrain_build' builds the "
+            "real styled terrain from the JSON config (the static "
+            "terrain_config.xml only holds a flat placeholder floor); "
+            "'velocity_map' overlays the per-tile flow arrows from the SAME "
+            "config so terrain and arrows always match."
         ),
-        "terrain": "terrain_config.xml",
+        "terrain_build": {
+            "config": "../configs/myoassist_base.json",
+            "style": "../style/terrain_style.xml",
+        },
         "scene_name": "myoassist_ensemble",
         "output": "images/myoassist_ensemble.png",
         "render": {
             "width": 3840,
             "height": 2160,
             "camera": CAMERAS,
+        },
+        "velocity_map": {
+            "terrain_config": "../configs/myoassist_base.json",
+            "samples_per_tile": 10,
+            "mode": "tile",
+            "tile_radial_mode": "mixed",
+            "start": [0.0, 0.0, 0.0],
+            "goal": [1.0, 0.0, 0.0],
         },
         "models": models,
     }
@@ -296,13 +311,24 @@ def main() -> None:
             "`python -m myoassist_terrains set-active myoassist_base_tiled3x3` then "
             "`python render_ensemble.py --config myoassist_ensemble_tiled_config.json`."
         ),
-        "terrain": "terrain_config.xml",
+        "terrain_build": {
+            "config": "../configs/myoassist_tiled.json",
+            "style": "../style/terrain_style.xml",
+        },
         "scene_name": "myoassist_ensemble_tiled",
         "output": "images/myoassist_ensemble_tiled.png",
         "render": {
             "width": 3840,
             "height": 2160,
             "camera": CAMERAS,
+        },
+        "velocity_map": {
+            "terrain_config": "../configs/myoassist_tiled.json",
+            "samples_per_tile": 10,
+            "mode": "tile",
+            "tile_radial_mode": "mixed",
+            "start": [0.0, 0.0, 0.0],
+            "goal": [1.0, 0.0, 0.0],
         },
         "models": tiled_models,
     }
