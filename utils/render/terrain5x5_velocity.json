@@ -1,0 +1,31 @@
+{
+  "_comment": "Terrain-only (no MSK models) velocity-arrow scene on the 15x15 tiled terrain. Render with render_terrain_check.py (--arrows). Add fixed top-down cameras to render.camera (use camera_convert.py on a MuJoCo-viewer pose) or use --free for quick framing.",
+  "scene_name": "terrain5x5_velocity",
+  "terrain_build": {
+    "config": "../configs/base_tiled5x5.json",
+    "style": "../style/terrain_style.xml"
+  },
+  "velocity_map": {
+    "terrain_config": "../configs/base_tiled5x5.json",
+    "start": [-38.0, -38.0, 0.0],
+    "goal": [38.0, 38.0, 0.0],
+    "samples_per_tile": 6,
+    "mode": "tile",
+    "tile_radial_mode": "mixed",
+    "tile_speed_jitter": 0.2,
+    "tile_jitter_seed": 7,
+    "arrow_emission": 0.7
+  },
+  "render": {
+    "width": 2560,
+    "height": 1440,
+    "camera": [
+      { "pos": [6.691, -33.715, 35.784], "xyaxes": [0.995, 0.100, -0.000, -0.078, 0.777, 0.625] },
+      { "pos": [5.920, -33.285, 64.455], "xyaxes": [0.995, 0.098, 0.000, -0.089, 0.908, 0.410] },
+      { "pos": [0.855, -55.583, 15.866], "xyaxes": [1.000, -0.005, 0.000, 0.003, 0.520, 0.854] },
+      { "pos": [-39.186, -39.144, 14.965], "xyaxes": [0.699, -0.715, 0.000, 0.362, 0.354, 0.862] },
+      { "pos": [-21.345, -22.015, 71.980], "xyaxes": [0.704, -0.710, 0.000, 0.670, 0.664, 0.331] },
+      { "pos": [-16.549, -17.263, 52.766], "xyaxes": [0.704, -0.710, 0.000, 0.670, 0.664, 0.331] }
+    ]
+  }
+}

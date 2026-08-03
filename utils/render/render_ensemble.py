@@ -487,7 +487,7 @@ def _load_config(path: Path) -> dict:
         return json.load(fh)
 
 
-def _build_scene(config_path: Path) -> None:
+def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
     config = _load_config(config_path)
     base_dir = config_path.parent
 
@@ -641,8 +641,13 @@ def _build_scene(config_path: Path) -> None:
             samples_per_tile=int(vm_cfg.get("samples_per_tile", 10)),
             mode=str(vm_cfg.get("mode", "tile")),
             tile_radial_mode=str(vm_cfg.get("tile_radial_mode", "mixed")),
+            tile_speed_jitter=float(vm_cfg.get("tile_speed_jitter", 0.0)),
+            tile_jitter_seed=int(vm_cfg.get("tile_jitter_seed", 0)),
         )
-        add_velocity_overlay(builder.worldbody_node, builder.asset_node, samples)
+        add_velocity_overlay(
+            builder.worldbody_node, builder.asset_node, samples,
+            emission=float(vm_cfg.get("arrow_emission", 0.0)),
+        )
         print(f"Velocity overlay: {len(samples)} samples across {len(vm_terrain.tiles)} tiles")
 
     # Set framebuffer size before compiling (needed for rendering)
@@ -794,8 +799,10 @@ def _build_scene(config_path: Path) -> None:
         else:
             media.show_image(image)
     else:
-        # Render from each camera
+        # Render from each camera (or just one, if --camera-index was given)
         for idx, cam_cfg in enumerate(cameras_list):
+            if camera_index is not None and idx != camera_index:
+                continue
             camera = mujoco.MjvCamera()
             
             if "pos" in cam_cfg and "xyaxes" in cam_cfg:
@@ -848,9 +855,11 @@ def _build_scene(config_path: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render ensembles of MuJoCo models")
     parser.add_argument("--config", required=True, help="Path to ensemble JSON config")
+    parser.add_argument("--camera-index", type=int, default=None,
+                        help="Render only this camera (0-based) instead of all; output keeps _c{index+1}")
     args = parser.parse_args()
     config_path = Path(args.config).resolve()
-    _build_scene(config_path)
+    _build_scene(config_path, camera_index=args.camera_index)
 
 
 if __name__ == "__main__":

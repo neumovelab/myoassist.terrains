@@ -37,13 +37,21 @@ def quat_from_z_axis(vector: np.ndarray) -> tuple[float, float, float, float]:
     )
 
 
-def rgba_for_speed(speed: float, max_speed: float) -> str:
-    """Red (slow) → green (fast) RGBA string."""
-    assert max_speed > 0.0
-    t = max(0.0, min(1.0, speed / max_speed))
-    r = 1.0 - t
-    g = 0.2 + 0.75 * t
-    b = 0.05
+def _ramp_rgb(t: float) -> tuple[float, float, float]:
+    """Red (0) → yellow (0.5) → green (1) ramp at normalised position t."""
+    t = max(0.0, min(1.0, t))
+    return (min(1.0, 2.0 * (1.0 - t)), min(1.0, 2.0 * t), 0.05)
+
+
+def rgba_for_speed(speed: float, lo: float, hi: float) -> str:
+    """Red (slow) → yellow (mid) → green (fast) RGBA string.
+
+    Colour is stretched across the observed [lo, hi] speed range rather than
+    [0, max], so the full red→green spread is used even when most samples
+    cluster near the top speed. The yellow midpoint widens the legible range.
+    """
+    span = max(hi - lo, 1e-9)
+    r, g, b = _ramp_rgb((speed - lo) / span)
     return f"{r:.3f} {g:.3f} {b:.3f} 1"
 
 
@@ -82,21 +90,54 @@ def add_velocity_overlay(
     worldbody: ET.Element,
     asset: ET.Element,
     samples: list[VelocitySample],
+    *,
+    emission: float = 0.0,
+    color_bins: int = 32,
 ) -> None:
     """Inject velocity-arrow geoms (shaft + cone head) into an existing scene.
 
     Arrows are non-colliding and coloured red→green by normalised speed.
     Call this after terrain and model geoms are already in `worldbody`/`asset`
     so MuJoCo name-uniqueness checks pass cleanly.
+
+    `emission` > 0 makes the arrows self-illuminate ("glow") so they stay
+    legible against the terrain without changing hue. Because emission is a
+    material property, the red→green ramp is quantised into `color_bins`
+    emissive materials and geoms reference those instead of a raw rgba.
+    0 keeps the original flat per-geom rgba.
     """
-    head_len = 0.22
+    assert emission >= 0.0
+    head_len = 0.25
     head_bins = 8
     for bin_idx in range(head_bins):
         t = bin_idx / (head_bins - 1)
-        radius = 0.018 + 0.095 * (t ** 1.5)
+        radius = 0.020 + 0.110 * (t ** 1.5)
         asset.append(cone_mesh(f"velocity_arrow_head_{bin_idx}", radius, head_len))
 
-    max_speed = max(s.speed for s in samples)
+    speeds = [s.speed for s in samples]
+    min_speed = min(speeds)
+    max_speed = max(speeds)
+    span = max(max_speed - min_speed, 1e-9)
+
+    glow = emission > 0.0
+    if glow:
+        assert color_bins >= 2
+        for k in range(color_bins):
+            r, g, b = _ramp_rgb(k / (color_bins - 1))
+            asset.append(ET.Element("material", {
+                "name": f"velocity_arrow_mat_{k}",
+                "rgba": f"{r:.3f} {g:.3f} {b:.3f} 1",
+                "emission": f"{emission:.3f}",
+                "specular": "0",
+                "shininess": "0",
+            }))
+
+    def _color_attr(sample: VelocitySample) -> dict[str, str]:
+        if glow:
+            t = max(0.0, min(1.0, (sample.speed - min_speed) / span))
+            k = min(color_bins - 1, max(0, round(t * (color_bins - 1))))
+            return {"material": f"velocity_arrow_mat_{k}"}
+        return {"rgba": rgba_for_speed(sample.speed, min_speed, max_speed)}
 
     for i, sample in enumerate(samples):
         velocity = np.asarray(sample.velocity, dtype=float)
@@ -105,12 +146,12 @@ def add_velocity_overlay(
             continue
         direction = velocity / speed
         speed_ratio = max(0.0, min(1.0, sample.speed / max_speed))
-        length = 0.45 + 0.55 * speed_ratio
-        shaft_len = max(0.08, length - head_len)
-        shaft_radius = 0.005 + 0.045 * (speed_ratio ** 1.5)
+        length = 0.30 + 0.40 * speed_ratio
+        shaft_len = max(0.06, length - head_len)
+        shaft_radius = 0.0035 + 0.026 * (speed_ratio ** 1.5)
         head_bin = min(head_bins - 1, max(0, round(speed_ratio * (head_bins - 1))))
         quat = quat_from_z_axis(direction)
-        rgba = rgba_for_speed(sample.speed, max_speed)
+        color_attr = _color_attr(sample)
 
         body = ET.SubElement(
             worldbody,
@@ -133,7 +174,7 @@ def add_velocity_overlay(
                 "type": "cylinder",
                 "size": f"{shaft_radius:.5f} {shaft_len / 2.0:.5f}",
                 "pos": f"0 0 {shaft_len / 2.0:.5f}",
-                "rgba": rgba,
+                **color_attr,
                 "contype": "0",
                 "conaffinity": "0",
             },
@@ -146,7 +187,7 @@ def add_velocity_overlay(
                 "type": "mesh",
                 "mesh": f"velocity_arrow_head_{head_bin}",
                 "pos": f"0 0 {shaft_len:.5f}",
-                "rgba": rgba,
+                **color_attr,
                 "contype": "0",
                 "conaffinity": "0",
             },

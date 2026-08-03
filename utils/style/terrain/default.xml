@@ -1,0 +1,30 @@
+<!-- =================================================
+    Copyright 2025 NeuMove Laboratory, Northeastern University
+    Model   :: Default Terrain (myoassist-terrains)
+    Author  :: Calder Robbins (robbins.cal@northeastern.edu)
+    License :: Apache 2.0
+====================================================== -->
+<!--
+  Shipped default terrain: a simple flat ground used when no terrain has been
+  generated/activated. terrain_config.xml points here out of the box; a build
+  with the activate flag (or `set-active <name>`) swaps the pointer to a
+  generated terrain/<name>.xml, and `set-active default` restores this file.
+
+  Hand-maintained (NOT generated). Floor material `matfloor` and the light/
+  visual style are declared in terrain_style.xml. The invisible height-field
+  geom is named "terrain" so model foot-ground contact pairs
+  (<pair geom1="terrain" .../>) resolve.
+-->
+
+<mujocoinclude>
+    <asset>
+        <hfield name="terrain" size="50 10 1 30" nrow="100" ncol="500"/>
+    </asset>
+
+    <worldbody>
+        <body name="ground" pos="40 0 0" quat="0.707035 0.707179 0 0">
+            <geom name="ground-plane" quat="0.707035 -0.707179 0 0" rgba="1 1 1 1" material="matfloor" size="0 0 0.05" type="plane"/>
+        </body>
+        <geom name="terrain" type="hfield" hfield="terrain" pos="40 0 -0.005" material="matfloor" conaffinity="1" contype="1" rgba="1 1 1 0"/>
+    </worldbody>
+</mujocoinclude>

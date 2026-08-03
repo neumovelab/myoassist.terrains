@@ -56,13 +56,21 @@ def generate_velocity_map(
     mode: str = "goal",
     smooth_speeds: bool = True,
     tile_radial_mode: str = "mixed",
+    tile_speed_jitter: float = 0.0,
+    tile_jitter_seed: int = 0,
 ) -> list[VelocitySample]:
-    """Generate a sampled 3D velocity map over a terrain config."""
+    """Generate a sampled 3D velocity map over a terrain config.
+
+    `tile_speed_jitter` (0..1) applies a deterministic per-tile speed multiplier
+    in [1 - jitter, 1 + jitter], keyed by (row, col) and `tile_jitter_seed`, so
+    even identical-type tiles get distinct speeds/colours. 0 disables it.
+    """
     assert samples_per_tile >= 1
     assert base_speed > 0.0
     assert height_offset >= 0.0
     assert mode in {"goal", "tile"}
     assert tile_radial_mode in {"inward", "outward", "mixed"}
+    assert 0.0 <= tile_speed_jitter < 1.0
 
     start_v = np.asarray(start, dtype=float)
     goal_v = np.asarray(goal, dtype=float)
@@ -87,6 +95,7 @@ def generate_velocity_map(
         scale = scales.get(tile.type)
         assert scale is not None, f"missing speed scale for tile type {tile.type!r}"
         layout = layouts[(tile.row, tile.col)]
+        jitter = _tile_speed_jitter(tile.row, tile.col, tile_speed_jitter, tile_jitter_seed)
 
         for oy in offsets_y:
             for ox in offsets_x:
@@ -100,7 +109,7 @@ def generate_velocity_map(
                     direction_xy = goal_direction_xy
                 direction, grade = _direction_and_grade(config, tiles, x, y, z, direction_xy)
                 roughness = _local_surface_roughness(config, tiles, x, y, z)
-                speed = base_speed * scale * _grade_speed_scale(max(grade, roughness))
+                speed = base_speed * scale * _grade_speed_scale(max(grade, roughness)) * jitter
                 velocity = direction * speed
                 out.append(
                     VelocitySample(
@@ -141,6 +150,19 @@ def estimate_surface_height(
     if tile.type == "rough":
         return _rough_height(params, local_x, local_y, tile_size)
     return float(params.get("base_height", 0.0))
+
+
+def _tile_speed_jitter(row: int, col: int, amplitude: float, seed: int) -> float:
+    """Deterministic per-tile speed multiplier in [1 - amplitude, 1 + amplitude].
+
+    Stable across runs (no Python hash randomisation): mixes (row, col, seed)
+    with large odd constants. amplitude <= 0 returns 1.0 (no variation).
+    """
+    if amplitude <= 0.0:
+        return 1.0
+    h = (int(row) * 73856093) ^ (int(col) * 19349663) ^ (int(seed) * 83492791)
+    frac = (h & 0xFFFFFFFF) / float(0xFFFFFFFF)  # [0, 1]
+    return 1.0 + amplitude * (2.0 * frac - 1.0)
 
 
 def _sample_offsets(length: float, count: int) -> np.ndarray:
