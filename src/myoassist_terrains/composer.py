@@ -66,7 +66,14 @@ _CONNECTOR_SHININESS = 0.5
 
 
 @dataclass
-class _CellLayout:
+class CellLayout:
+    """World-space placement of one grid cell.
+
+    Public layout primitive: `compute_cell_layouts` returns these and
+    downstream consumers (e.g. the velocity map) read `center_x` / `center_y`
+    to place samples over the grid.
+    """
+
     row: int
     col: int
     center_x: float
@@ -191,12 +198,12 @@ def build_terrain(
     uniform_rgba = _read_uniform_rgba_from_style(output_dir)
     _register_palette_materials(spec, config, uniform_rgba, output_dir=output_dir)
 
-    layouts = _compute_cell_layouts(config)
+    layouts = compute_cell_layouts(config)
 
     # Resolve the final per-cell tile list: explicit `tiles` plus sampled
     # tiles for any cell not covered by an explicit entry (when a
     # randomization spec is supplied).
-    resolved_tiles = _resolve_tiles(config)
+    resolved_tiles = resolve_tiles(config)
 
     # Track per-cell base heights so connectors can match across cells.
     cell_results: dict[tuple[int, int], TileEmitResult] = {}
@@ -248,7 +255,7 @@ def build_terrain(
 # Layout
 
 
-def _resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
+def resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
     """Combine explicit `tiles` with sampled tiles for any uncovered cell.
 
     Explicit placements take precedence; randomization fills the rest.
@@ -368,7 +375,12 @@ def _sample_numeric(rng: np.random.Generator, lo: float, hi: float, default_valu
     return float(rng.uniform(float(lo), float(hi)))
 
 
-def _compute_cell_layouts(config: TerrainConfig) -> dict[tuple[int, int], _CellLayout]:
+def compute_cell_layouts(config: TerrainConfig) -> dict[tuple[int, int], CellLayout]:
+    """Compute the world-space center of every grid cell.
+
+    Returns a `{(row, col): CellLayout}` map. Public layout primitive shared by
+    the composer and downstream consumers (e.g. the velocity map).
+    """
     tw, tl = config.grid.tile_size
     bw = config.border.width
     rows, cols = config.grid.rows, config.grid.cols
@@ -379,10 +391,10 @@ def _compute_cell_layouts(config: TerrainConfig) -> dict[tuple[int, int], _CellL
     x_first = -total_w / 2 + tw / 2
     y_first = -total_l / 2 + tl / 2
 
-    layouts: dict[tuple[int, int], _CellLayout] = {}
+    layouts: dict[tuple[int, int], CellLayout] = {}
     for r in range(rows):
         for c in range(cols):
-            layouts[(r, c)] = _CellLayout(
+            layouts[(r, c)] = CellLayout(
                 row=r,
                 col=c,
                 center_x=x_first + c * (tw + bw),
@@ -526,7 +538,7 @@ def _box_z_span(top_z: float) -> tuple[float, float]:
 def _emit_edge_connectors(
     spec: mj.MjSpec,
     config: TerrainConfig,
-    layouts: dict[tuple[int, int], _CellLayout],
+    layouts: dict[tuple[int, int], CellLayout],
     cell_results: dict[tuple[int, int], TileEmitResult],
     appearance: _Appearance,
 ) -> None:
@@ -578,7 +590,7 @@ def _emit_edge_connectors(
 def _emit_corner_connectors(
     spec: mj.MjSpec,
     config: TerrainConfig,
-    layouts: dict[tuple[int, int], _CellLayout],
+    layouts: dict[tuple[int, int], CellLayout],
     cell_results: dict[tuple[int, int], TileEmitResult],
     appearance: _Appearance,
 ) -> None:
