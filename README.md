@@ -26,6 +26,7 @@ and a single shared texture for uniform-palette terrains.
 - [Configuration schema](#configuration-schema)
 - [CLI reference](#cli-reference)
 - [Python API](#python-api)
+- [Velocity maps](#velocity-maps)
 - [Project layout for users](#project-layout-for-users)
 - [Utilities and example configs](#utilities-and-example-configs)
 - [Extending: adding a custom tile type](#extending-adding-a-custom-tile-type)
@@ -39,7 +40,7 @@ The package is published as a normal Python package and is utilized via
 `pip install -e .` (editable) or `pip install .` for a frozen build.
 
 ```bash
-git clone https://github.com/neumove/myoassist.terrains.git
+git clone https://github.com/neumovelab/myoassist.terrains.git
 cd myoassist.terrains
 pip install -e .
 
@@ -377,8 +378,100 @@ Stable public surface:
 | `myoassist_terrains.register_tile(name, emit_fn, ...)`      | Register a custom tile type at runtime. |
 | `myoassist_terrains.config.load_config(path)`               | Load + validate a JSON config into a `TerrainConfig`. |
 | `myoassist_terrains.composer.emit_xml_include(spec)`        | Convert a compiled spec into a `<mujocoinclude>` fragment. |
+| `myoassist_terrains.composer.resolve_tiles(config)`         | Resolve explicit + randomized `tiles` into a flat row-major `list[TileConfig]`. |
+| `myoassist_terrains.composer.compute_cell_layouts(config)`  | `{(row, col): CellLayout}` giving each cell's world-space center. |
 | `myoassist_terrains.tiles.REGISTRY`                          | Read-only dict of tile name -> `TileImpl`. |
 | `myoassist_terrains.paths.find_terrain_root()`               | Locate the project root via `terrain_config.xml`. |
+| `myoassist_terrains.velocity_map.generate_velocity_map(...)`| Sample a 3D velocity field over a terrain (see [Velocity maps](#velocity-maps)). |
+| `myoassist_terrains.velocity_arrows.add_velocity_overlay(...)`| Inject non-colliding velocity-arrow geoms into an existing scene. |
+
+---
+
+## Velocity maps
+
+A **velocity map** is a sampled 3D vector field laid over a terrain: at points
+across every tile it stores a direction (toward a goal, optionally with a
+per-tile radial component) and a speed that is slowed by the local tile type,
+surface grade, and roughness. It is used to author and visualize
+target-velocity fields for locomotion tasks (the field rendered in the paper's
+Fig. 3(b)) and as an input to velocity-tracking rewards downstream.
+
+The subsystem is two modules:
+
+- **`myoassist_terrains.velocity_map`** — builds the field from a
+  `TerrainConfig` (no MuJoCo model needed).
+- **`myoassist_terrains.velocity_arrows`** — turns a field into red→green arrow
+  geoms injected into an MJCF scene for rendering.
+
+### Building a field
+
+```python
+from pathlib import Path
+from myoassist_terrains.config import load_config
+from myoassist_terrains.velocity_map import generate_velocity_map
+
+config  = load_config(Path("utils/configs/myoassist_base.json"))
+samples = generate_velocity_map(
+    config,
+    start=(-10.0, -10.0, 0.0),
+    goal=(10.0, 10.0, 0.0),
+    samples_per_tile=8,
+    mode="tile",          # "goal": every arrow points at the goal;
+                          # "tile": add a per-tile radial component
+)
+# each sample is a VelocitySample: row, col, tile_type,
+#   position=(x, y, z), velocity=(vx, vy, vz), speed
+```
+
+`generate_velocity_map(config, *, start, goal, samples_per_tile=10,
+base_speed=1.0, height_offset=0.35, speed_scale=None, mode="goal",
+smooth_speeds=True, tile_radial_mode="mixed", tile_speed_jitter=0.0,
+tile_jitter_seed=0)` returns `list[VelocitySample]`. Key knobs:
+
+| Parameter | Meaning |
+|-----------|---------|
+| `start`, `goal` | World `(x, y, z)`; horizontal direction points from each sample toward `goal`. |
+| `samples_per_tile` | Grid density per tile (`n × n` samples). |
+| `base_speed` | Speed on flat terrain before per-tile / grade scaling. |
+| `speed_scale` | Override the per-tile-type multiplier (default `DEFAULT_SPEED_SCALE`, flat `1.0` → gap `0.25`). |
+| `mode` | `"goal"` (straight to goal) or `"tile"` (blend in a radial component). |
+| `tile_radial_mode` | For `mode="tile"`: `"inward"`, `"outward"`, or `"mixed"`. |
+| `smooth_speeds` | Spatially smooth neighbouring sample speeds. |
+| `tile_speed_jitter`, `tile_jitter_seed` | Deterministic per-tile speed variation in `[1-j, 1+j]`, so identical tile types still read distinctly. |
+| `height_offset` | Lift samples above the surface (arrow placement). |
+
+Two surface-height helpers back the field and are useful on their own:
+`estimate_surface_height(tile, local_x, local_y, tile_size)` (per-tile-type
+walkable height at a local coordinate) and `surface_height_at(config, tiles, x,
+y)` (world-coordinate lookup across the resolved grid).
+
+### Rendering arrows
+
+`add_velocity_overlay(worldbody, asset, samples, *, emission=0.0,
+color_bins=32)` appends a shaft + cone-head arrow per sample to an existing
+scene's `<worldbody>`/`<asset>` (`xml.etree.ElementTree` elements). Arrows are
+non-colliding (`contype/conaffinity=0`) and coloured red (slow) → green (fast)
+across the observed speed range; `emission > 0` makes them self-illuminate so
+they stay legible against the terrain. Call it after the terrain/model geoms
+are in the scene so name-uniqueness checks pass.
+
+### Ready-to-run renderers
+
+Two scripts under `utils/render/` drive the above end to end (need the
+`[render]` extra for `mediapy`):
+
+```bash
+# Terrain-only velocity overlay from a terrain config.
+python utils/render/render_velocity_map.py \
+    --terrain-config utils/configs/myoassist_base.json \
+    --start -10 -10 0 --goal 10 10 0
+
+# Terrain (+optional --arrows) with no musculoskeletal models; free or fixed
+# camera. --emit-xml writes a viewer-ready scene instead of rendering.
+python utils/render/render_terrain_check.py \
+    --config utils/render/terrain5x5_velocity.json \
+    --arrows --free --elevation -90 --distance 130
+```
 
 ---
 
@@ -432,22 +525,53 @@ default base config.
 ## Utilities and example configs
 
 The `utils/` tree ships ready-to-use JSON configs, user-side style/asset
-templates, and standalone helper scripts:
+templates, and standalone helper scripts.
+
+**Example configs** (`utils/configs/`):
 
 | Path | What it is |
 |------|------------|
-| `utils/configs/myoassist_base.json`     | 3x3 base terrain (8 m tiles, all nine tile types, concrete texture). |
-| `utils/configs/myoassist_tiled.json`    | 9x9 tiled version of the base; per-block rotations generated by `_make_tiled.py`. |
-| `utils/configs/flat_smoke_test.json`    | Minimum-viable 2x2 flat terrain. Use to verify a fresh install. |
-| `utils/configs/m{2,3,4,4b,5}_*.json`    | Single-tile-type demos for development. |
-| `utils/configs/rough_only.json`         | Rough-tile-only demo (hfield asset emission). |
-| `utils/configs/_make_tiled.py`          | Helper: derive a 9x9 tiled config from a 3x3 base with random per-block rotations. |
-| `utils/configs/_rebuild_myoassist.py`   | Helper: rebuild base + tiled in one command (run after editing the base JSON or style). |
-| `utils/style/terrain_config.xml`        | Template active-terrain pointer. |
-| `utils/style/terrain_style.xml`         | Template style include (skybox, fog, lights, default `terrain_mat`). |
-| `utils/style/CONCRETE.png`              | Sample concrete texture (1024x768). |
-| `utils/render/render_ensemble.py`       | Compose multiple models on a shared terrain and render from one or more cameras. |
-| `utils/render/_build_ensemble_config.py`| Validate per-variant qpos lists and emit a ready-to-render ensemble JSON. |
+| `flat_smoke_test.json`         | Minimum-viable 2x2 flat terrain. Use to verify a fresh install. |
+| `m{2,3,4,4b,5}_*.json`         | Single-tile-type demos for development. |
+| `rough_only.json`              | Rough-tile-only demo (hfield asset emission). |
+| `myoassist_base.json`          | 3x3 base terrain (8 m tiles, all nine tile types, concrete texture). |
+| `myoassist_tiled.json`         | 9x9 tiled version of the base; per-block rotations generated by `_make_tiled.py`. |
+| `base.json`                    | 3x3 base block (5 m tiles) used by the tiled / velocity render pipeline. |
+| `base_tiled3x3.json`           | 9x9 terrain (3x3 grid of `base` blocks) — the ensemble/velocity render terrain. |
+| `base_tiled5x5.json`           | 15x15 terrain (`base` grown by 3 tile-rings); center matches `base_tiled3x3`. |
+
+**Config helpers** (`utils/configs/`, `_`-prefixed, run directly):
+
+| Path | What it is |
+|------|------------|
+| `_make_tiled.py`         | Derive a 9x9 tiled config from a 3x3 base with random per-block rotations. |
+| `_make_tiled_rings.py`   | Grow the 9x9 tiled terrain outward by 3 rings → 15x15, preserving the center. |
+| `_rebuild_myoassist.py`  | Rebuild `myoassist_base` + `myoassist_tiled` in one command (after editing the base JSON or style). |
+
+**User-side style / asset templates** (`utils/style/`):
+
+| Path | What it is |
+|------|------------|
+| `terrain_config.xml`        | Template active-terrain pointer. |
+| `terrain_style.xml`         | Template style include (skybox, fog, lights, default `terrain_mat`). |
+| `terrain/default.xml`       | Shipped default flat-ground terrain the pointer targets out of the box; `set-active default` restores it. |
+| `CONCRETE.png`              | Sample concrete texture (1024x768). |
+
+**Render tooling** (`utils/render/`, needs the `[render]` extra):
+
+| Path | What it is |
+|------|------------|
+| `render_ensemble.py`        | Compose multiple models on a shared terrain and render from one or more cameras. |
+| `render_terrain_check.py`   | Render terrain (+optional velocity arrows) with no models; free/fixed camera; can emit a viewer-ready XML. |
+| `render_velocity_map.py`    | Render a terrain-only velocity-arrow overlay from a terrain config + start/goal. |
+| `_build_ensemble_config.py` | Validate per-variant qpos lists and emit a ready-to-render ensemble JSON. |
+| `_build_velocity_config.py` | Build the full ensemble render configs (`ensemble_velocity.json`, `ensemble_noarrows.json`, + smoke). |
+| `camera_convert.py`         | Convert MuJoCo camera XML ↔ the `pos`/`xyaxes` JSON used in ensemble configs. |
+| `ensemble_*.json`           | Generated ensemble render configs (model instances, per-instance qpos, cameras). |
+| `terrain5x5_velocity.json`  | 5x5 terrain + velocity settings for `render_terrain_check.py`. |
+| `terrain5x5_viewer.xml`     | Emitted viewer scene (open with `python -m mujoco.viewer --mjcf=...`). |
+| `terrain_config.xml`, `terrain_style.xml` | Render-side style copies (tile `terrain_mat` rgba read from here). |
+| `mesh/`                     | Device + anatomical meshes referenced by the ensemble render scenes. |
 
 ---
 
@@ -491,8 +615,9 @@ pytest --cov            # with coverage
 ```
 
 The test suite covers config validation, the tile registry, the composer
-(layouts, palette resolution, sample terrain build), and a smoke test
-that compiles a generated terrain through MuJoCo end-to-end.
+(layouts, palette resolution, sample terrain build), the velocity map
+(sample coverage, goal-directed vectors, tile-mode direction), and a smoke
+test that compiles a generated terrain through MuJoCo end-to-end.
 
 ---
 
