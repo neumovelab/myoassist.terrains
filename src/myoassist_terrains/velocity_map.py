@@ -16,7 +16,7 @@ from typing import Iterable
 import numpy as np
 
 from myoassist_terrains.config import TerrainConfig, TileConfig
-from myoassist_terrains.composer import _compute_cell_layouts, _resolve_tiles
+from myoassist_terrains.composer import compute_cell_layouts, resolve_tiles
 from myoassist_terrains.noise import edge_taper, generate_complex_terrain
 from myoassist_terrains.tiles import REGISTRY
 
@@ -82,8 +82,8 @@ def generate_velocity_map(
     if speed_scale is not None:
         scales.update(speed_scale)
 
-    layouts = _compute_cell_layouts(config)
-    tiles = _resolve_tiles(config)
+    layouts = compute_cell_layouts(config)
+    tiles = resolve_tiles(config)
     tw, tl = config.grid.tile_size
 
     offsets_x = _sample_offsets(tw, samples_per_tile)
@@ -330,7 +330,7 @@ def surface_height_at(
     x: float,
     y: float,
 ) -> float:
-    layouts = _compute_cell_layouts(config)
+    layouts = compute_cell_layouts(config)
     tw, tl = config.grid.tile_size
     for tile in tiles:
         layout = layouts[(tile.row, tile.col)]
