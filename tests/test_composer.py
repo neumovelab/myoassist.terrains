@@ -135,9 +135,8 @@ def test_randomization_fills_uncovered_cells():
     # Manually attach a randomization spec so we don't trigger the
     # "must have tiles OR randomization" guard separately.
     from myoassist_terrains.config import RandomizationSpec
-    cfg.randomization = RandomizationSpec(
-        seed=1, weights={"flat": 1.0}
-    )
+
+    cfg.randomization = RandomizationSpec(seed=1, weights={"flat": 1.0})
     spec = build_terrain(cfg)
     model = spec.compile()
     # 4 cells * (base flat geom) + transparent backstop, plus no connectors.
@@ -203,10 +202,15 @@ def test_emitted_paths_distinguish_texture_and_hfield(tmp_path: Path):
         texture=TextureConfig(file="tex.png", name="my_tex"),
         tiles=[
             TileConfig(
-                row=0, col=0, type="rough",
+                row=0,
+                col=0,
+                type="rough",
                 params={
-                    "seed": 5, "grid_resolution": 64,
-                    "num_pits": 2, "num_hills": 2, "vertical_relief": 0.3,
+                    "seed": 5,
+                    "grid_resolution": 64,
+                    "num_pits": 2,
+                    "num_hills": 2,
+                    "vertical_relief": 0.3,
                 },
             )
         ],

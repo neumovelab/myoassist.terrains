@@ -123,11 +123,6 @@ def transpose_to_blocks(qpos: list[float]) -> list[list[float]]:
     return out
 
 
-def parse(qpos_str: str) -> list[float]:
-    """Tokenise a whitespace-separated qpos string into a flat float list."""
-    return [float(tok) for tok in qpos_str.replace("\n", " ").split()]
-
-
 # Each entry: (alias, model_xml, [pose_str, pose_str, ...]).
 # Poses are pasted verbatim from the user-supplied list. Order within
 # qpos is the joint order MuJoCo reports after compiling each model XML.
@@ -202,20 +197,15 @@ POSE_SETS = [
 # the user provided. Renderer numbers output as _c1.._c4.
 CAMERAS = [
     # 1. Kept from previous tiled-scene config
-    {"pos": [14.474, 15.784, 7.140],
-     "xyaxes": [-0.701, 0.713, 0.000, -0.242, -0.238, 0.941]},
+    {"pos": [14.474, 15.784, 7.140], "xyaxes": [-0.701, 0.713, 0.000, -0.242, -0.238, 0.941]},
     # 2. High wide
-    {"pos": [14.787, 28.325, 10.728],
-     "xyaxes": [-0.857, 0.515, 0.000, -0.142, -0.236, 0.961]},
+    {"pos": [14.787, 28.325, 10.728], "xyaxes": [-0.857, 0.515, 0.000, -0.142, -0.236, 0.961]},
     # 3. Close low
-    {"pos": [4.877, 12.458, 2.376],
-     "xyaxes": [-0.866, 0.500, 0.000, -0.055, -0.096, 0.994]},
+    {"pos": [4.877, 12.458, 2.376], "xyaxes": [-0.866, 0.500, 0.000, -0.055, -0.096, 0.994]},
     # 4. Side angle
-    {"pos": [17.599, -7.646, 4.024],
-     "xyaxes": [0.432, 0.902, 0.000, -0.182, 0.087, 0.979]},
+    {"pos": [17.599, -7.646, 4.024], "xyaxes": [0.432, 0.902, 0.000, -0.182, 0.087, 0.979]},
     # 5. Reverse oblique
-    {"pos": [-20.023, -6.732, 5.604],
-     "xyaxes": [0.320, -0.948, 0.000, 0.310, 0.104, 0.945]},
+    {"pos": [-20.023, -6.732, 5.604], "xyaxes": [0.320, -0.948, 0.000, 0.310, 0.104, 0.945]},
 ]
 
 
@@ -233,17 +223,16 @@ def main() -> None:
         for i, pose_str in enumerate(poses, start=1):
             qpos = parse(pose_str)
             if len(qpos) != nq:
-                print(
-                    f"FAIL  {alias} pose {i}: got {len(qpos)} values, "
-                    f"model expects nq={nq}. Check for missing tokens."
-                )
+                print(f"FAIL  {alias} pose {i}: got {len(qpos)} values, model expects nq={nq}. Check for missing tokens.")
                 return
             instances.append({"qpos": qpos})
-        models.append({
-            "name": alias,
-            "model": model_rel.replace("\\", "/"),
-            "instances": instances,
-        })
+        models.append(
+            {
+                "name": alias,
+                "model": model_rel.replace("\\", "/"),
+                "instances": instances,
+            }
+        )
         print(f"OK    {alias:10s} {len(instances)} poses, nq={nq}")
 
     config = {
@@ -281,8 +270,7 @@ def main() -> None:
 
     OUT_PATH.write_text(json.dumps(config, indent=2), encoding="utf-8")
     n_instances = sum(len(m["instances"]) for m in models)
-    print(f"\nWrote {OUT_PATH} with {n_instances} instances across "
-          f"{len(models)} models and {len(CAMERAS)} cameras.")
+    print(f"\nWrote {OUT_PATH} with {n_instances} instances across {len(models)} models and {len(CAMERAS)} cameras.")
 
     # Tiled config: same camera bank, but each instance is replicated 9x
     # (one per 3x3 block of the 9x9 tiled terrain) with position rotated
@@ -293,11 +281,13 @@ def main() -> None:
         for inst in entry["instances"]:
             for new_qpos in transpose_to_blocks(inst["qpos"]):
                 tiled_instances.append({"qpos": new_qpos})
-        tiled_models.append({
-            "name": entry["name"],
-            "model": entry["model"],
-            "instances": tiled_instances,
-        })
+        tiled_models.append(
+            {
+                "name": entry["name"],
+                "model": entry["model"],
+                "instances": tiled_instances,
+            }
+        )
 
     tiled_config = {
         "_comment": (
@@ -335,8 +325,7 @@ def main() -> None:
 
     TILED_OUT_PATH.write_text(json.dumps(tiled_config, indent=2), encoding="utf-8")
     n_tiled_instances = sum(len(m["instances"]) for m in tiled_models)
-    print(f"Wrote {TILED_OUT_PATH} with {n_tiled_instances} instances "
-          f"({n_instances} poses x 9 blocks).")
+    print(f"Wrote {TILED_OUT_PATH} with {n_tiled_instances} instances ({n_instances} poses x 9 blocks).")
 
 
 if __name__ == "__main__":

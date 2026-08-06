@@ -276,8 +276,7 @@ def resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
             continue
         if type_name not in REGISTRY:
             raise ValueError(
-                f"randomization.weights references unknown tile type {type_name!r}; "
-                f"registered types: {sorted(REGISTRY)}"
+                f"randomization.weights references unknown tile type {type_name!r}; registered types: {sorted(REGISTRY)}"
             )
         types.append(type_name)
         weights_arr.append(float(w))
@@ -334,29 +333,20 @@ def _sample_tile_params(
 
     # User overrides (numeric range, categorical list, or fixed via [v, v]).
     for param_name, spec in user_ranges.items():
-        params[param_name] = _sample_user_spec(
-            rng, spec, type_name, param_name, params.get(param_name)
-        )
+        params[param_name] = _sample_user_spec(rng, spec, type_name, param_name, params.get(param_name))
 
     return params
 
 
 def _is_numeric_range(spec: list) -> bool:
-    return len(spec) == 2 and all(
-        isinstance(v, (int, float)) and not isinstance(v, bool) for v in spec
-    )
+    return len(spec) == 2 and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in spec)
 
 
 def _sample_user_spec(rng, spec, type_name: str, param_name: str, default_value):
     if not isinstance(spec, list):
-        raise ValueError(
-            f"randomization.param_ranges[{type_name!r}][{param_name!r}] must be a list, "
-            f"got {type(spec).__name__}"
-        )
+        raise ValueError(f"randomization.param_ranges[{type_name!r}][{param_name!r}] must be a list, got {type(spec).__name__}")
     if len(spec) == 0:
-        raise ValueError(
-            f"randomization.param_ranges[{type_name!r}][{param_name!r}] cannot be empty"
-        )
+        raise ValueError(f"randomization.param_ranges[{type_name!r}][{param_name!r}] cannot be empty")
     if _is_numeric_range(spec):
         return _sample_numeric(rng, float(spec[0]), float(spec[1]), default_value)
     return _sample_categorical(rng, spec)
@@ -527,9 +517,7 @@ def _resolve_connector_appearance(
 def _box_z_span(top_z: float) -> tuple[float, float]:
     """Return (center_z, half_z) for a box spanning [BASELINE_Z, top_z]."""
     if top_z <= BASELINE_Z:
-        raise ValueError(
-            f"box top_z={top_z:.3f} must be > BASELINE_Z={BASELINE_Z:.3f}"
-        )
+        raise ValueError(f"box top_z={top_z:.3f} must be > BASELINE_Z={BASELINE_Z:.3f}")
     half_z = (top_z - BASELINE_Z) / 2
     center_z = (top_z + BASELINE_Z) / 2
     return center_z, half_z

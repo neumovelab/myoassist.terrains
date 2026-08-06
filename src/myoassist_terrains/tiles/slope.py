@@ -41,7 +41,7 @@ DEFAULT_PARAMS: dict = {
     "plateau_ratio": 0.10,
     "base_height": 0.0,
     "cross_ratio": 0.90,  # active region covers 90% of cross axis; remainder is flat base margin
-    "inverted": False,    # True => ramps descend into a valley instead of rising to a peak
+    "inverted": False,  # True => ramps descend into a valley instead of rising to a peak
 }
 
 PARAM_RANGES: dict[str, tuple[float, float]] = {
@@ -81,18 +81,13 @@ def emit(
     if not (0.0 < angle_deg < 90.0):
         raise ValueError(f"slope.angle_deg must satisfy 0 < angle < 90 (got {angle_deg})")
     if not (0.0 < plateau_ratio < 1.0):
-        raise ValueError(
-            f"slope.plateau_ratio must satisfy 0 < ratio < 1 (got {plateau_ratio})"
-        )
+        raise ValueError(f"slope.plateau_ratio must satisfy 0 < ratio < 1 (got {plateau_ratio})")
     if not (0.0 < cross_ratio <= 1.0):
         raise ValueError(f"slope.cross_ratio must satisfy 0 < ratio <= 1, got {cross_ratio}")
 
     base_top_z = origin_xyz[2] + base_height
     if base_top_z <= BASELINE_Z:
-        raise ValueError(
-            f"slope '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; "
-            f"increase base_height."
-        )
+        raise ValueError(f"slope '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; increase base_height.")
 
     long_idx, cross_idx = (1, 0) if axis == "y" else (0, 1)
     long_total = tile_size[long_idx]
@@ -154,9 +149,7 @@ def emit(
                 pos[cross_idx] += sign * (cross_total / 2 - cross_margin_half)
                 size[cross_idx] = cross_margin_half
                 size[long_idx] = tile_size[long_idx] / 2
-                spec.worldbody.add_geom(
-                    name=f"{name}_base_{side}", size=size, pos=pos, **geom_kwargs
-                )
+                spec.worldbody.add_geom(name=f"{name}_base_{side}", size=size, pos=pos, **geom_kwargs)
 
     # 2. Plateau slab — thin slab matching the ramp slab thickness, bridging
     #    the ramp tops at peak height. Its top face is at peak_top_z; below

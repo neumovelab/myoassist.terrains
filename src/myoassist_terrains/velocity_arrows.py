@@ -4,6 +4,7 @@ Provides a single public entry point, `add_velocity_overlay`, plus the small
 helpers it depends on. Both `render_velocity_map.py` and `render_ensemble.py`
 import from here so the arrow style stays in one place.
 """
+
 from __future__ import annotations
 
 import math
@@ -111,7 +112,7 @@ def add_velocity_overlay(
     head_bins = 8
     for bin_idx in range(head_bins):
         t = bin_idx / (head_bins - 1)
-        radius = 0.020 + 0.110 * (t ** 1.5)
+        radius = 0.020 + 0.110 * (t**1.5)
         asset.append(cone_mesh(f"velocity_arrow_head_{bin_idx}", radius, head_len))
 
     speeds = [s.speed for s in samples]
@@ -124,13 +125,18 @@ def add_velocity_overlay(
         assert color_bins >= 2
         for k in range(color_bins):
             r, g, b = _ramp_rgb(k / (color_bins - 1))
-            asset.append(ET.Element("material", {
-                "name": f"velocity_arrow_mat_{k}",
-                "rgba": f"{r:.3f} {g:.3f} {b:.3f} 1",
-                "emission": f"{emission:.3f}",
-                "specular": "0",
-                "shininess": "0",
-            }))
+            asset.append(
+                ET.Element(
+                    "material",
+                    {
+                        "name": f"velocity_arrow_mat_{k}",
+                        "rgba": f"{r:.3f} {g:.3f} {b:.3f} 1",
+                        "emission": f"{emission:.3f}",
+                        "specular": "0",
+                        "shininess": "0",
+                    },
+                )
+            )
 
     def _color_attr(sample: VelocitySample) -> dict[str, str]:
         if glow:
@@ -148,7 +154,7 @@ def add_velocity_overlay(
         speed_ratio = max(0.0, min(1.0, sample.speed / max_speed))
         length = 0.30 + 0.40 * speed_ratio
         shaft_len = max(0.06, length - head_len)
-        shaft_radius = 0.0035 + 0.026 * (speed_ratio ** 1.5)
+        shaft_radius = 0.0035 + 0.026 * (speed_ratio**1.5)
         head_bin = min(head_bins - 1, max(0, round(speed_ratio * (head_bins - 1))))
         quat = quat_from_z_axis(direction)
         color_attr = _color_attr(sample)
@@ -158,11 +164,7 @@ def add_velocity_overlay(
             "body",
             {
                 "name": f"velocity_arrow_{i:04d}",
-                "pos": (
-                    f"{sample.position[0]:.5f} "
-                    f"{sample.position[1]:.5f} "
-                    f"{sample.position[2]:.5f}"
-                ),
+                "pos": (f"{sample.position[0]:.5f} {sample.position[1]:.5f} {sample.position[2]:.5f}"),
                 "quat": " ".join(f"{q:.8f}" for q in quat),
             },
         )

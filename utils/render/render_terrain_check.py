@@ -19,6 +19,7 @@ Examples:
   python utils/render/render_terrain_check.py --config utils/render/ensemble_velocity.json \
       --camera-index 3
 """
+
 from __future__ import annotations
 
 import argparse
@@ -72,7 +73,9 @@ def _build(config_path: Path, want_arrows: bool):
             tile_jitter_seed=int(vm.get("tile_jitter_seed", 0)),
         )
         RE.add_velocity_overlay(
-            builder.worldbody_node, builder.asset_node, samples,
+            builder.worldbody_node,
+            builder.asset_node,
+            samples,
             emission=float(vm.get("arrow_emission", 0.0)),
         )
         print(f"Velocity overlay: {len(samples)} samples")

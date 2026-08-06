@@ -25,10 +25,10 @@ DEFAULT_RGBA: tuple[float, float, float, float] = (0.55, 0.45, 0.65, 1.0)  # mut
 DEFAULT_PARAMS: dict = {
     "rows": 4,
     "cols": 4,
-    "stone_size": 0.6,    # stone footprint side length (m)
-    "stone_height": 0.20, # stone height above base (m)
+    "stone_size": 0.6,  # stone footprint side length (m)
+    "stone_height": 0.20,  # stone height above base (m)
     "jitter_frac": 0.20,  # random offset as fraction of cell size
-    "edge_margin": 0.5,   # leave a flat margin around the stones
+    "edge_margin": 0.5,  # leave a flat margin around the stones
     "seed": 0,
     "base_height": 0.0,
 }
@@ -72,17 +72,14 @@ def emit(
     base_top_z = origin_xyz[2] + base_height
     if base_top_z <= BASELINE_Z:
         raise ValueError(
-            f"stepping_stones '{name}': base top z={base_top_z:.3f} <= "
-            f"BASELINE_Z={BASELINE_Z:.3f}; increase base_height."
+            f"stepping_stones '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; increase base_height."
         )
 
     origin_x, origin_y = origin_xyz[0], origin_xyz[1]
     inner_w = tile_size[0] - 2 * edge_margin
     inner_l = tile_size[1] - 2 * edge_margin
     if inner_w <= 0 or inner_l <= 0:
-        raise ValueError(
-            f"stepping_stones '{name}': edge_margin {edge_margin:.3f} too large for tile"
-        )
+        raise ValueError(f"stepping_stones '{name}': edge_margin {edge_margin:.3f} too large for tile")
 
     cell_w = inner_w / cols
     cell_l = inner_l / rows

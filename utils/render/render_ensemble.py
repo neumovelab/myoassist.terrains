@@ -104,6 +104,7 @@ def _resolve_file_paths(elem: ET.Element, base: Path) -> None:
     absolute, anchored at `base`. Uses os.path.abspath instead of resolve()
     to avoid following junctions/symlinks (see _resolve_path docstring)."""
     import os
+
     file_attr = elem.attrib.get("file")
     if file_attr and not Path(file_attr).is_absolute():
         elem.set("file", os.path.abspath(base / file_attr).replace("\\", "/"))
@@ -113,6 +114,7 @@ def _resolve_file_paths(elem: ET.Element, base: Path) -> None:
 
 def _gather_terrain_content(file_path: Path, consumer_dir: Path) -> Dict[str, List[ET.Element]]:
     import os
+
     tree = ET.parse(file_path)
     root = tree.getroot()
     assets: List[ET.Element] = []
@@ -233,7 +235,7 @@ class TemplateModel:
                 self.key_qpos[name] = self.model.key_qpos[key_id].copy()
             else:
                 start = key_id * self.nq
-                self.key_qpos[name] = self.model.key_qpos[start:start + self.nq].copy()
+                self.key_qpos[name] = self.model.key_qpos[start : start + self.nq].copy()
         self.joint_qposadr: Dict[str, int] = {}
         for joint_id in range(self.model.njnt):
             name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_id)
@@ -243,9 +245,7 @@ class TemplateModel:
 
     def keyframe_qpos(self, key_name: str) -> np.ndarray:
         if key_name not in self.key_qpos:
-            raise ValueError(
-                f"Keyframe '{key_name}' not found in template model {self.path}"
-            )
+            raise ValueError(f"Keyframe '{key_name}' not found in template model {self.path}")
         return self.key_qpos[key_name].copy()
 
     def root_body(self) -> ET.Element:
@@ -275,12 +275,12 @@ class TemplateModel:
     def default_elements(self) -> List[ET.Element]:
         default_nodes = self.xml_root.findall("default")
         return [_deepcopy(node) for node in default_nodes]
-    
+
     def default_class_names(self) -> List[str]:
         """Return list of default class names defined in this model."""
         default_nodes = self.xml_root.findall("default")
         return [node.attrib.get("class", "") for node in default_nodes]
-    
+
     def tendon_elements(self) -> List[ET.Element]:
         """Extract tendon elements from the model."""
         tendon_node = self.xml_root.find("tendon")
@@ -313,7 +313,7 @@ class SceneBuilder:
         self.worldbody_node = ET.SubElement(self.root, "worldbody")
         self.tendon_node: Optional[ET.Element] = None
         self.clones: List[np.ndarray] = []
-    
+
     def set_statistic(self, statistic: ET.Element) -> None:
         """Insert/replace a top-level <statistic> element.
 
@@ -346,7 +346,7 @@ class SceneBuilder:
             if child.tag == "worldbody":
                 worldbody_idx = i
                 break
-        
+
         for element in defaults:
             class_name = element.attrib.get("class", "")
             if class_name not in self.added_default_classes:
@@ -402,13 +402,12 @@ class SceneBuilder:
 
     def add_camera(self, name: str, pos: List[float], xyaxes: List[float]) -> None:
         """Add a camera element to the worldbody."""
-        camera = ET.SubElement(self.worldbody_node, "camera", {
-            "name": name,
-            "pos": " ".join(map(str, pos)),
-            "xyaxes": " ".join(map(str, xyaxes)),
-            "mode": "fixed"
-        })
-    
+        ET.SubElement(
+            self.worldbody_node,
+            "camera",
+            {"name": name, "pos": " ".join(map(str, pos)), "xyaxes": " ".join(map(str, xyaxes)), "mode": "fixed"},
+        )
+
     def ensure_tendon_node(self) -> ET.Element:
         """Ensure a tendon node exists, creating it if necessary."""
         if self.tendon_node is None:
@@ -422,10 +421,10 @@ class SceneBuilder:
                     # Insert before actuator
                     insert_idx = i
                     break
-            
+
             # Create the tendon element
             self.tendon_node = ET.Element("tendon")
-            
+
             # Insert at the right position
             if insert_idx is not None:
                 self.root.insert(insert_idx, self.tendon_node)
@@ -436,7 +435,7 @@ class SceneBuilder:
                 # Fallback: append before worldbody (shouldn't happen, but safe)
                 self.root.append(self.tendon_node)
         return self.tendon_node
-    
+
     def add_model_tendons(
         self,
         alias: str,
@@ -446,10 +445,10 @@ class SceneBuilder:
         """Add tendon elements for a model instance with proper name suffixing."""
         if not tendon_elements:
             return
-        
+
         tendon_node = self.ensure_tendon_node()
         suffix = f"_{alias}_{index}"
-        
+
         for tendon_elem in tendon_elements:
             tendon_copy = _deepcopy(tendon_elem)
             # Apply suffix to tendon name
@@ -459,7 +458,7 @@ class SceneBuilder:
             # Update site references to match suffixed site names
             _replace_site_refs(tendon_copy, suffix)
             tendon_node.append(tendon_copy)
-    
+
     def to_xml_string(self) -> str:
         return ET.tostring(self.root, encoding="unicode")
 
@@ -476,6 +475,7 @@ def _resolve_path(path: str, base_dir: Path) -> Path:
     instead of the workspace the user actually set up.
     """
     import os
+
     path_obj = Path(path)
     if not path_obj.is_absolute():
         path_obj = Path(os.path.abspath(base_dir / path_obj))
@@ -559,7 +559,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
         builder.add_defaults_once(default_elems)
 
         body_template = template.root_body()
-        
+
         # Check for 'coll' class references in this model's body
         coll_refs = _check_class_references(body_template, "coll")
         if coll_refs:
@@ -567,7 +567,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
 
         tendon_elements = template.tendon_elements()
         # if tendon_elements:
-            # print(f"  Model '{alias}' has {len(tendon_elements)} tendon elements")
+        # print(f"  Model '{alias}' has {len(tendon_elements)} tendon elements")
 
         instances = model_cfg.get("instances", [])
         if not instances:
@@ -578,9 +578,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
             if custom_qpos is not None:
                 qpos = np.array(custom_qpos, dtype=float, copy=True)
                 if qpos.ndim != 1 or qpos.size != template.nq:
-                    raise ValueError(
-                        f"Custom qpos for '{alias}' instance {index} must have length {template.nq}"
-                    )
+                    raise ValueError(f"Custom qpos for '{alias}' instance {index} must have length {template.nq}")
             else:
                 key_name = instance.get("keyframe", model_cfg.get("keyframe"))
                 if not key_name:
@@ -597,9 +595,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
                         if joint_name:
                             idx = template.joint_qposadr.get(joint_name)
                             if idx is None:
-                                raise ValueError(
-                                    f"Joint '{joint_name}' not found in model {model_path}"
-                                )
+                                raise ValueError(f"Joint '{joint_name}' not found in model {model_path}")
                             if idx >= len(qpos):
                                 print(
                                     f"Warning: joint '{joint_name}' index {idx} exceeds qpos length"
@@ -611,14 +607,11 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
                 if yaw_deg is not None:
                     joint_name = root_joints.get("yaw")
                     if not joint_name:
-                        raise ValueError(
-                            f"Instance for '{alias}' specifies yaw_deg but no 'yaw' joint provided"
-                        )
+                        raise ValueError(f"Instance for '{alias}' specifies yaw_deg but no 'yaw' joint provided")
                     idx = template.joint_qposadr.get(joint_name)
                     if idx is None or idx >= len(qpos):
                         print(
-                            f"Warning: yaw joint '{joint_name}' not available for model {model_path};"
-                            " skipping yaw adjustment."
+                            f"Warning: yaw joint '{joint_name}' not available for model {model_path}; skipping yaw adjustment."
                         )
                     else:
                         qpos[idx] = math.radians(float(yaw_deg))
@@ -645,7 +638,9 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
             tile_jitter_seed=int(vm_cfg.get("tile_jitter_seed", 0)),
         )
         add_velocity_overlay(
-            builder.worldbody_node, builder.asset_node, samples,
+            builder.worldbody_node,
+            builder.asset_node,
+            samples,
             emission=float(vm_cfg.get("arrow_emission", 0.0)),
         )
         print(f"Velocity overlay: {len(samples)} samples across {len(vm_terrain.tiles)} tiles")
@@ -655,7 +650,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
     width = int(render_cfg.get("width", 1920))
     height = int(render_cfg.get("height", 1080))
     builder.set_framebuffer_size(width, height)
-    
+
     # Parse camera configuration - support both single camera (dict) and multiple cameras (list)
     camera_cfg = render_cfg.get("camera", {})
     cameras_list = []
@@ -665,13 +660,13 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
     elif isinstance(camera_cfg, dict) and "pos" in camera_cfg and "xyaxes" in camera_cfg:
         # Single camera provided as a dict
         cameras_list = [camera_cfg]
-    
+
     # Add cameras to XML
     for idx, cam in enumerate(cameras_list):
         if "pos" in cam and "xyaxes" in cam:
             camera_name = f"render_camera_{idx}"
             builder.add_camera(camera_name, cam["pos"], cam["xyaxes"])
-    
+
     if not cameras_list:
         print("Warning: No cameras specified in config")
 
@@ -683,7 +678,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
     with open(debug_xml_path, "w", encoding="utf-8") as f:
         f.write(final_xml)
     # print(f"Final scene has default classes: {sorted(builder.added_default_classes)}")
-    
+
     # Check for 'coll' class references in the final scene
     coll_refs = _check_class_references(builder.root, "coll")
     if coll_refs:
@@ -697,9 +692,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
     # config dir. For the static-include path, write next to the terrain XML
     # so its relative asset paths still resolve.
     temp_dir = terrain_path.parent if terrain_path is not None else base_dir
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".xml", dir=temp_dir, delete=False
-    ) as tmp_file:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", dir=temp_dir, delete=False) as tmp_file:
         tmp_file.write(final_xml)
         tmp_path = Path(tmp_file.name)
 
@@ -718,9 +711,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
 
     total_nq = sum(len(qpos) for qpos in builder.clones)
     if total_nq != scene_model.nq:
-        raise RuntimeError(
-            f"Mismatch between aggregated nq={total_nq} and compiled model nq={scene_model.nq}"
-        )
+        raise RuntimeError(f"Mismatch between aggregated nq={total_nq} and compiled model nq={scene_model.nq}")
 
     data = mujoco.MjData(scene_model)
     qpos_vector = np.concatenate(builder.clones)
@@ -771,7 +762,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
 
     # Get base output path
     base_output_path = render_cfg.get("output", config.get("output"))
-    
+
     # Render from each camera
     if not cameras_list:
         # Fallback to free camera if no cameras specified
@@ -787,10 +778,10 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
             camera.distance = float(camera_cfg.get("distance", 15.0))
             camera.azimuth = float(camera_cfg.get("azimuth", 135.0))
             camera.elevation = float(camera_cfg.get("elevation", -20.0))
-        
+
         renderer.update_scene(data, camera=camera)
         image = renderer.render()
-        
+
         if base_output_path:
             out_path = _resolve_path(base_output_path, base_dir)
             out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -804,7 +795,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
             if camera_index is not None and idx != camera_index:
                 continue
             camera = mujoco.MjvCamera()
-            
+
             if "pos" in cam_cfg and "xyaxes" in cam_cfg:
                 # Use fixed camera mode
                 camera_name = f"render_camera_{idx}"
@@ -812,9 +803,8 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
                 if camera_id >= 0:
                     camera.type = mujoco.mjtCamera.mjCAMERA_FIXED
                     camera.fixedcamid = camera_id
-                    
-                    cam_pos = scene_model.cam_pos[camera_id]
-                    print(f"Rendering camera {idx+1}/{len(cameras_list)}: '{camera_name}' (ID: {camera_id})")
+
+                    print(f"Rendering camera {idx + 1}/{len(cameras_list)}: '{camera_name}' (ID: {camera_id})")
                     # print(f"  Config: pos={cam_cfg['pos']}, xyaxes={cam_cfg['xyaxes']}")
                     # print(f"  Compiled model: pos={cam_pos}")
                 else:
@@ -831,11 +821,11 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
                 camera.distance = float(cam_cfg.get("distance", 15.0))
                 camera.azimuth = float(cam_cfg.get("azimuth", 135.0))
                 camera.elevation = float(cam_cfg.get("elevation", -20.0))
-                print(f"Rendering camera {idx+1}/{len(cameras_list)}: free camera mode")
-            
+                print(f"Rendering camera {idx + 1}/{len(cameras_list)}: free camera mode")
+
             renderer.update_scene(data, camera=camera)
             image = renderer.render()
-            
+
             # Generate output filename with camera index
             if base_output_path:
                 out_path = _resolve_path(base_output_path, base_dir)
@@ -843,7 +833,7 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
                 # e.g., "images/test2_ensemble.png" -> "images/test2_ensemble_c1.png"
                 stem = out_path.stem
                 suffix = out_path.suffix
-                camera_suffix = f"_c{idx+1}"
+                camera_suffix = f"_c{idx + 1}"
                 new_out_path = out_path.parent / f"{stem}{camera_suffix}{suffix}"
                 new_out_path.parent.mkdir(parents=True, exist_ok=True)
                 media.write_image(str(new_out_path), image)
@@ -855,8 +845,12 @@ def _build_scene(config_path: Path, camera_index: Optional[int] = None) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Render ensembles of MuJoCo models")
     parser.add_argument("--config", required=True, help="Path to ensemble JSON config")
-    parser.add_argument("--camera-index", type=int, default=None,
-                        help="Render only this camera (0-based) instead of all; output keeps _c{index+1}")
+    parser.add_argument(
+        "--camera-index",
+        type=int,
+        default=None,
+        help="Render only this camera (0-based) instead of all; output keeps _c{index+1}",
+    )
     args = parser.parse_args()
     config_path = Path(args.config).resolve()
     _build_scene(config_path, camera_index=args.camera_index)
@@ -864,4 +858,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

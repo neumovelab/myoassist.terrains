@@ -91,29 +91,21 @@ def emit(
 ) -> TileEmitResult:
     if output_dir is None:
         raise ValueError(
-            f"rough tile {name!r} requires `output_dir` to write its hfield PNG; "
-            f"the composer should pass this automatically."
+            f"rough tile {name!r} requires `output_dir` to write its hfield PNG; the composer should pass this automatically."
         )
     if vertical_relief <= 0:
         raise ValueError(f"rough.vertical_relief must be > 0 (got {vertical_relief})")
     if grid_resolution < 8:
         raise ValueError(f"rough.grid_resolution must be >= 8 (got {grid_resolution})")
     if not (0.0 <= edge_taper_frac < 0.5):
-        raise ValueError(
-            f"rough.edge_taper_frac must satisfy 0 <= frac < 0.5 (got {edge_taper_frac})"
-        )
+        raise ValueError(f"rough.edge_taper_frac must satisfy 0 <= frac < 0.5 (got {edge_taper_frac})")
 
     base_top_z = origin_xyz[2] + base_height
     if base_top_z <= BASELINE_Z:
-        raise ValueError(
-            f"rough '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; "
-            f"increase base_height."
-        )
+        raise ValueError(f"rough '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; increase base_height.")
 
     if relief_mode not in ("centered", "up", "down"):
-        raise ValueError(
-            f"rough.relief_mode must be 'centered' | 'up' | 'down' (got {relief_mode!r})"
-        )
+        raise ValueError(f"rough.relief_mode must be 'centered' | 'up' | 'down' (got {relief_mode!r})")
 
     # 1. Generate the raw heightmap (no edge taper applied — we apply it
     #    differently per relief_mode below).
