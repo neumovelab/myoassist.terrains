@@ -265,6 +265,7 @@ def resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
     out: list[TileConfig] = list(config.tiles)
 
     if config.randomization is None:
+        out.sort(key=lambda t: (t.row, t.col))  # row-major even without randomization (honor the docstring contract)
         return out
 
     rs = config.randomization

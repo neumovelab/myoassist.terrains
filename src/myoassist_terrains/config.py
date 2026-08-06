@@ -146,6 +146,16 @@ def load_config(path: Path) -> TerrainConfig:
     return _config_from_dict(raw)
 
 
+def config_from_dict(raw: dict[str, Any]) -> TerrainConfig:
+    """Build a validated ``TerrainConfig`` from an in-memory dict.
+
+    Public companion to :func:`load_config` (which reads from a path). Consumers that
+    already hold a config dict (e.g. an in-memory compose pipeline) should use this
+    rather than reaching for the private ``_config_from_dict``.
+    """
+    return _config_from_dict(raw)
+
+
 def _config_from_dict(raw: dict[str, Any]) -> TerrainConfig:
     grid_raw = raw.get("grid", {})
     grid = GridConfig(
