@@ -110,9 +110,7 @@ def generate_complex_terrain(
     selector = normalize(selector)
 
     pit_weight = gaussian_filter((selector < pit_cut).astype(np.float32), sigma=5.0)
-    plateau_weight = gaussian_filter(
-        ((selector >= pit_cut) & (selector < plateau_cut)).astype(np.float32), sigma=5.0
-    )
+    plateau_weight = gaussian_filter(((selector >= pit_cut) & (selector < plateau_cut)).astype(np.float32), sigma=5.0)
     rough_weight = gaussian_filter((selector >= plateau_cut).astype(np.float32), sigma=5.0)
     weight_sum = pit_weight + plateau_weight + rough_weight + 1e-8
     pit_weight /= weight_sum

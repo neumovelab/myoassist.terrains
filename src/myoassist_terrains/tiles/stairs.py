@@ -38,7 +38,7 @@ DEFAULT_PARAMS: dict = {
     "return_mode": "mirror",
     "base_height": 0.0,
     "cross_ratio": 0.90,  # active region covers 90% of cross axis; remainder is flat base margin
-    "inverted": False,    # True => steps descend into a pit instead of rising to a peak
+    "inverted": False,  # True => steps descend into a pit instead of rising to a peak
 }
 
 PARAM_RANGES: dict[str, tuple[float, float]] = {
@@ -74,9 +74,7 @@ def emit(
     if axis not in ("x", "y"):
         raise ValueError(f"stairs.axis must be 'x' or 'y', got {axis!r}")
     if return_mode != "mirror":
-        raise NotImplementedError(
-            f"stairs.return_mode={return_mode!r} not in v1; only 'mirror' supported."
-        )
+        raise NotImplementedError(f"stairs.return_mode={return_mode!r} not in v1; only 'mirror' supported.")
     if n_steps < 1:
         raise ValueError(f"stairs.n_steps must be >= 1, got {n_steps}")
     if step_height <= 0 or peak_width <= 0:
@@ -88,10 +86,7 @@ def emit(
 
     base_top_z = origin_xyz[2] + base_height
     if base_top_z <= BASELINE_Z:
-        raise ValueError(
-            f"stairs '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; "
-            f"increase base_height."
-        )
+        raise ValueError(f"stairs '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; increase base_height.")
 
     # Map axis to (long, cross) index pair: 0=x, 1=y.
     long_idx, cross_idx = (1, 0) if axis == "y" else (0, 1)
@@ -153,9 +148,7 @@ def emit(
                 pos[cross_idx] += sign * (cross_total / 2 - cross_margin_half)
                 size[cross_idx] = cross_margin_half
                 size[long_idx] = tile_size[long_idx] / 2
-                spec.worldbody.add_geom(
-                    name=f"{name}_base_{side}", size=size, pos=pos, **geom_kwargs
-                )
+                spec.worldbody.add_geom(name=f"{name}_base_{side}", size=size, pos=pos, **geom_kwargs)
 
     # Step direction sign: +1 = up to a peak, -1 = down into a pit.
     step_sign = -1.0 if inverted else +1.0

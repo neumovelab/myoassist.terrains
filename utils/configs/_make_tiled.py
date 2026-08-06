@@ -59,12 +59,14 @@ for dr in range(3):
             if "seed" in new_params:
                 # Per-copy perturbation so rough patches don't replicate identically.
                 new_params["seed"] = int(t["params"]["seed"]) + block_idx * 100
-            tiled_tiles.append({
-                "row": new_r + dr * br,
-                "col": new_c + dc * bc,
-                "type": t["type"],
-                "params": new_params,
-            })
+            tiled_tiles.append(
+                {
+                    "row": new_r + dr * br,
+                    "col": new_c + dc * bc,
+                    "type": t["type"],
+                    "params": new_params,
+                }
+            )
 
 tiled = {
     "terrain_name": base["terrain_name"] + "_tiled3x3",
@@ -85,10 +87,6 @@ for optional_key in ("palette", "texture"):
         tiled[optional_key] = base[optional_key]
 
 out_path.write_text(json.dumps(tiled, indent=2), encoding="utf-8")
-rot_summary = " ".join(
-    f"({dr},{dc}):{block_rotations[dr][dc]*90}deg"
-    for dr in range(3) for dc in range(3)
-)
-print(f"Wrote {out_path} with {len(tiled_tiles)} tiles "
-      f"({tiled['grid']['rows']}x{tiled['grid']['cols']} grid)")
+rot_summary = " ".join(f"({dr},{dc}):{block_rotations[dr][dc] * 90}deg" for dr in range(3) for dc in range(3))
+print(f"Wrote {out_path} with {len(tiled_tiles)} tiles ({tiled['grid']['rows']}x{tiled['grid']['cols']} grid)")
 print(f"Block rotations (master_seed={master_seed}): {rot_summary}")

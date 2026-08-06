@@ -21,10 +21,10 @@ from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 DEFAULT_RGBA: tuple[float, float, float, float] = (0.75, 0.35, 0.30, 1.0)  # muted red
 
 DEFAULT_PARAMS: dict = {
-    "density": 0.4,         # obstacles per m²
-    "size_range": [0.20, 0.50],   # box footprint side length range (m)
-    "height_range": [0.10, 0.40], # obstacle height range above base (m)
-    "edge_margin": 0.5,     # don't place obstacles within this distance of tile edges
+    "density": 0.4,  # obstacles per m²
+    "size_range": [0.20, 0.50],  # box footprint side length range (m)
+    "height_range": [0.10, 0.40],  # obstacle height range above base (m)
+    "edge_margin": 0.5,  # don't place obstacles within this distance of tile edges
     "seed": 0,
     "base_height": 0.0,
 }
@@ -65,8 +65,7 @@ def emit(
     base_top_z = origin_xyz[2] + base_height
     if base_top_z <= BASELINE_Z:
         raise ValueError(
-            f"discrete_obstacles '{name}': base top z={base_top_z:.3f} <= "
-            f"BASELINE_Z={BASELINE_Z:.3f}; increase base_height."
+            f"discrete_obstacles '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; increase base_height."
         )
 
     origin_x, origin_y = origin_xyz[0], origin_xyz[1]
@@ -98,9 +97,7 @@ def emit(
     half_x_inner = tile_size[0] / 2 - edge_margin
     half_y_inner = tile_size[1] / 2 - edge_margin
     if half_x_inner <= 0 or half_y_inner <= 0:
-        raise ValueError(
-            f"discrete_obstacles '{name}': edge_margin {edge_margin:.3f} too large for tile"
-        )
+        raise ValueError(f"discrete_obstacles '{name}': edge_margin {edge_margin:.3f} too large for tile")
 
     for i in range(n_obstacles):
         local_x = float(rng.uniform(-half_x_inner, half_x_inner))

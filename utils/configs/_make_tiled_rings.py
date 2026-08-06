@@ -15,6 +15,7 @@ Run:
   python utils/configs/_make_tiled_rings.py
 Writes utils/configs/base_tiled5x5.json
 """
+
 from __future__ import annotations
 
 import json
@@ -22,14 +23,14 @@ import random
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-BASE = HERE / "base.json"                 # 3x3 motif
-CURRENT = HERE / "base_tiled3x3.json"     # existing 9x9 (center, preserved)
+BASE = HERE / "base.json"  # 3x3 motif
+CURRENT = HERE / "base_tiled3x3.json"  # existing 9x9 (center, preserved)
 OUT = HERE / "base_tiled5x5.json"
 
-N_BLOCKS = 5            # 5x5 base blocks -> 15x15 tiles (one ring added)
-CENTER_OFFSET = 1       # center 3x3 blocks start at block index 1
+N_BLOCKS = 5  # 5x5 base blocks -> 15x15 tiles (one ring added)
+CENTER_OFFSET = 1  # center 3x3 blocks start at block index 1
 OUTER_SEED_OFFSET = 10000  # keep outer rough seeds clear of the center's
-ROTATION_SEED = 142     # rng for the outer-ring block rotations
+ROTATION_SEED = 142  # rng for the outer-ring block rotations
 
 
 def rotate_rc(r, c, rows, cols, k):
@@ -82,12 +83,14 @@ def main() -> None:
                     params["axis"] = rotate_axis(params["axis"], k)
                 if "seed" in params:
                     params["seed"] = int(t["params"]["seed"]) + block_idx * 100 + OUTER_SEED_OFFSET
-                tiles.append({
-                    "row": nr + dr * br,
-                    "col": nc + dc * bc,
-                    "type": t["type"],
-                    "params": params,
-                })
+                tiles.append(
+                    {
+                        "row": nr + dr * br,
+                        "col": nc + dc * bc,
+                        "type": t["type"],
+                        "params": params,
+                    }
+                )
 
     out = {
         "terrain_name": "base_tiled5x5",
@@ -101,8 +104,10 @@ def main() -> None:
             out[opt] = base[opt]
 
     OUT.write_text(json.dumps(out, indent=2), encoding="utf-8")
-    print(f"Wrote {OUT.name}: {len(tiles)} tiles ({out['grid']['rows']}x{out['grid']['cols']}), "
-          f"center {len(current['tiles'])} preserved + {len(tiles) - len(current['tiles'])} new")
+    print(
+        f"Wrote {OUT.name}: {len(tiles)} tiles ({out['grid']['rows']}x{out['grid']['cols']}), "
+        f"center {len(current['tiles'])} preserved + {len(tiles) - len(current['tiles'])} new"
+    )
 
 
 if __name__ == "__main__":

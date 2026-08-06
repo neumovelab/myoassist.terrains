@@ -16,9 +16,7 @@ from myoassist_terrains.tiles.base import TileEmitResult, TileImpl
 def lookup(type_name: str) -> TileImpl:
     """Return the TileImpl for a registered type, raising KeyError if unknown."""
     if type_name not in REGISTRY:
-        raise KeyError(
-            f"Unknown tile type {type_name!r}. Registered: {sorted(REGISTRY)}"
-        )
+        raise KeyError(f"Unknown tile type {type_name!r}. Registered: {sorted(REGISTRY)}")
     return REGISTRY[type_name]
 
 

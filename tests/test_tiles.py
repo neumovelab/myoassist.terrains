@@ -50,7 +50,9 @@ def test_each_tile_compiles_solo(tile_name: str, tmp_path: Path):
         palette_preset="diverse",
         tiles=[
             TileConfig(
-                row=0, col=0, type=tile_name,
+                row=0,
+                col=0,
+                type=tile_name,
                 params=PER_TILE_PARAMS.get(tile_name, {}),
             )
         ],

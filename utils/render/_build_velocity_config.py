@@ -21,6 +21,7 @@ utils/style/terrain_style.xml.
 Re-run after editing poses/cameras/overlay:
   python utils/render/_build_velocity_config.py
 """
+
 from __future__ import annotations
 
 import copy
@@ -39,7 +40,7 @@ VELOCITY = {
     "start": [-22.0, -22.0, 0.0],
     "goal": [22.0, 22.0, 0.0],
     "samples_per_tile": 6,
-    "mode": "tile",            # "tile" = per-tile flow field; "goal" = all toward goal
+    "mode": "tile",  # "tile" = per-tile flow field; "goal" = all toward goal
     "tile_radial_mode": "mixed",
 }
 
@@ -48,8 +49,8 @@ SMOKE_CAMERA_INDEX = 3
 
 def _tiled(cfg: dict) -> dict:
     cfg = copy.deepcopy(cfg)
-    cfg.pop("terrain", None)            # drop static include
-    cfg.pop("velocity_map", None)       # callers re-add if wanted
+    cfg.pop("terrain", None)  # drop static include
+    cfg.pop("velocity_map", None)  # callers re-add if wanted
     cfg["terrain_build"] = {"config": TILED_TERRAIN, "style": TERRAIN_STYLE}
     return cfg
 

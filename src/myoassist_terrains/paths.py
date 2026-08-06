@@ -34,9 +34,7 @@ def find_terrain_root(start: Path | None = None) -> Path:
         candidate = Path(env_override).resolve()
         if (candidate / _TERRAIN_CONFIG_FILENAME).exists():
             return candidate
-        raise FileNotFoundError(
-            f"{_ENV_ROOT}={env_override} does not contain {_TERRAIN_CONFIG_FILENAME}"
-        )
+        raise FileNotFoundError(f"{_ENV_ROOT}={env_override} does not contain {_TERRAIN_CONFIG_FILENAME}")
 
     cur = (start or Path.cwd()).resolve()
     while True:
