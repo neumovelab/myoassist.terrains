@@ -174,7 +174,7 @@ def test_flat_matches_legacy_matfloor_styling():
     # infinite plane (half_x = half_y = 0), 0.05 render grid spacing
     assert list(model.geom("terrain").size) == pytest.approx([0.0, 0.0, 0.05])
     # matfloor material: textured + low reflectance
-    reflectance = float(model.material("myoassist_mat_uniform").reflectance)
+    reflectance = model.material("myoassist_mat_uniform").reflectance.item()
     assert reflectance == pytest.approx(0.05)
     assert model.ntex >= 1
     # horizon haze == ground color (matfloor rgb1) so the plane fades into itself
@@ -255,9 +255,7 @@ def test_uniform_uses_shared_material():
 
 
 def test_uniform_palette_override_sets_rgba():
-    cfg = _config_from_dict(
-        {"terrain": "flat", "palette": {"terrain": [0.1, 0.2, 0.3, 1.0]}}
-    )
+    cfg = _config_from_dict({"terrain": "flat", "palette": {"terrain": [0.1, 0.2, 0.3, 1.0]}})
     model = build_terrain(cfg).compile()
     rgba = model.geom("terrain").rgba
     assert rgba[0] == pytest.approx(0.1)
@@ -272,9 +270,7 @@ def test_uniform_texture_binds(tmp_path: Path):
     library.mkdir(parents=True)
     PIL.new("RGB", (8, 8), color=(128, 128, 128)).save(project_root / "tex.png")
 
-    cfg = _config_from_dict(
-        {"terrain": "flat", "texture": {"file": "tex.png", "name": "my_tex"}}
-    )
+    cfg = _config_from_dict({"terrain": "flat", "texture": {"file": "tex.png", "name": "my_tex"}})
     xml = emit_xml_include(build_terrain(cfg, output_dir=library))
     assert 'name="my_tex"' in xml
     assert 'texture="my_tex"' in xml

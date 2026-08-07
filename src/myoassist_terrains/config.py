@@ -52,9 +52,7 @@ class BorderConfig:
         if self.width < 0:
             raise ValueError(f"border.width must be >= 0, got {self.width}")
         if self.match_mode not in {"min", "max", "mean"}:
-            raise ValueError(
-                f"border.match_mode must be one of {{'min','max','mean'}}, got {self.match_mode!r}"
-            )
+            raise ValueError(f"border.match_mode must be one of {{'min','max','mean'}}, got {self.match_mode!r}")
 
 
 @dataclass
@@ -87,9 +85,7 @@ class RandomizationSpec:
             raise ValueError("randomization.weights cannot be empty")
         for type_name, w in self.weights.items():
             if w < 0:
-                raise ValueError(
-                    f"randomization.weights[{type_name!r}] must be >= 0 (got {w})"
-                )
+                raise ValueError(f"randomization.weights[{type_name!r}] must be >= 0 (got {w})")
         if sum(self.weights.values()) <= 0:
             raise ValueError("randomization.weights must include at least one positive entry")
 
@@ -133,10 +129,7 @@ class TerrainConfig:
 
     def __post_init__(self) -> None:
         if self.palette_preset not in {"diverse", "uniform", "custom"}:
-            raise ValueError(
-                f"palette_preset must be one of {{'diverse','uniform','custom'}}, "
-                f"got {self.palette_preset!r}"
-            )
+            raise ValueError(f"palette_preset must be one of {{'diverse','uniform','custom'}}, got {self.palette_preset!r}")
         if not self.terrain_name:
             raise ValueError("terrain_name is required and must be non-empty")
         if not self.tiles and self.randomization is None:
@@ -149,8 +142,7 @@ class TerrainConfig:
         for t in self.tiles:
             if not (0 <= t.row < self.grid.rows and 0 <= t.col < self.grid.cols):
                 raise ValueError(
-                    f"Tile {t.type} at (row={t.row}, col={t.col}) is outside the grid "
-                    f"({self.grid.rows}x{self.grid.cols})"
+                    f"Tile {t.type} at (row={t.row}, col={t.col}) is outside the grid ({self.grid.rows}x{self.grid.cols})"
                 )
 
 
@@ -195,35 +187,23 @@ class UniformTerrainConfig:
 
     def __post_init__(self) -> None:
         if self.terrain not in UNIFORM_TERRAIN_TYPES:
-            raise ValueError(
-                f"terrain must be one of {sorted(UNIFORM_TERRAIN_TYPES)}, "
-                f"got {self.terrain!r}"
-            )
+            raise ValueError(f"terrain must be one of {sorted(UNIFORM_TERRAIN_TYPES)}, got {self.terrain!r}")
         if not self.terrain_name:
             self.terrain_name = f"uniform_{self.terrain}"
         if self.palette_preset not in {"diverse", "uniform", "custom"}:
-            raise ValueError(
-                f"palette_preset must be one of {{'diverse','uniform','custom'}}, "
-                f"got {self.palette_preset!r}"
-            )
+            raise ValueError(f"palette_preset must be one of {{'diverse','uniform','custom'}}, got {self.palette_preset!r}")
         if self.extent <= 0:
             raise ValueError(f"extent must be > 0, got {self.extent}")
         if self.resolution < 8:
             raise ValueError(f"resolution must be >= 8, got {self.resolution}")
         if self.safe_zone_radius < 0:
-            raise ValueError(
-                f"safe_zone_radius must be >= 0, got {self.safe_zone_radius}"
-            )
+            raise ValueError(f"safe_zone_radius must be >= 0, got {self.safe_zone_radius}")
         if self.base_depth <= 0:
             raise ValueError(f"base_depth must be > 0, got {self.base_depth}")
         if self.terrain in {"random", "sinusoidal"} and self.amplitude <= 0:
-            raise ValueError(
-                f"{self.terrain} terrain requires amplitude > 0, got {self.amplitude}"
-            )
+            raise ValueError(f"{self.terrain} terrain requires amplitude > 0, got {self.amplitude}")
         if self.terrain == "sinusoidal" and self.period <= 0:
-            raise ValueError(
-                f"sinusoidal terrain requires period > 0, got {self.period}"
-            )
+            raise ValueError(f"sinusoidal terrain requires period > 0, got {self.period}")
         if self.terrain == "slope" and not (-90.0 < self.deg < 90.0):
             raise ValueError(f"slope deg must satisfy -90 < deg < 90, got {self.deg}")
 
@@ -236,6 +216,18 @@ def load_config(path: Path) -> TerrainConfig | UniformTerrainConfig:
     """Load and validate a terrain config from JSON (grid or uniform form)."""
     with path.open(encoding="utf-8") as fh:
         raw = json.load(fh)
+    return _config_from_dict(raw)
+
+
+def config_from_dict(
+    raw: dict[str, Any],
+) -> TerrainConfig | UniformTerrainConfig:
+    """Build a validated config (grid or uniform form) from an in-memory dict.
+
+    Public companion to :func:`load_config` (which reads from a path). Consumers that
+    already hold a config dict (e.g. an in-memory compose pipeline) should use this
+    rather than reaching for the private ``_config_from_dict``.
+    """
     return _config_from_dict(raw)
 
 

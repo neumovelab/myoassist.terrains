@@ -36,6 +36,7 @@ render = [
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
+    "ruff==0.15.20",  # pinned: ruff's formatter changes between minor releases; keep CI == local
 ]
 
 [project.scripts]
@@ -54,3 +55,12 @@ minversion = "7.0"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra --strict-markers"
+
+# Lint/format config -- mirrors assist_sim / myo_sim so tooling is consistent across repos.
+[tool.ruff]
+line-length = 128
+extend-exclude = [".claude", "external"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]

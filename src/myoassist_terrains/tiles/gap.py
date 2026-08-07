@@ -59,10 +59,7 @@ def emit(
 
     base_top_z = origin_xyz[2] + base_height
     if base_top_z <= BASELINE_Z:
-        raise ValueError(
-            f"gap '{name}': base top z={base_top_z:.3f} <= "
-            f"BASELINE_Z={BASELINE_Z:.3f}; increase base_height."
-        )
+        raise ValueError(f"gap '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; increase base_height.")
 
     # The trench RUNS along `axis`; it bisects the perpendicular axis.
     # axis='y' => trench long in y, gap separates x.

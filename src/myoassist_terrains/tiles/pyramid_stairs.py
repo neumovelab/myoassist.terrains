@@ -69,8 +69,7 @@ def emit(
     base_top_z = origin_xyz[2] + base_height
     if base_top_z <= BASELINE_Z:
         raise ValueError(
-            f"pyramid_stairs '{name}': base top z={base_top_z:.3f} <= "
-            f"BASELINE_Z={BASELINE_Z:.3f}; increase base_height."
+            f"pyramid_stairs '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; increase base_height."
         )
 
     # If the pyramid would collapse before reaching n_steps, the per-level

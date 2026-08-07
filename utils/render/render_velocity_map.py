@@ -21,7 +21,7 @@ from myoassist_terrains import build_terrain
 from myoassist_terrains.composer import emit_xml_include
 from myoassist_terrains.config import load_config
 from myoassist_terrains.velocity_arrows import add_velocity_overlay as _add_velocity_overlay
-from myoassist_terrains.velocity_map import VelocitySample, generate_velocity_map
+from myoassist_terrains.velocity_map import generate_velocity_map
 
 
 def _prepare_config_texture(config_path: Path, output_dir: Path):

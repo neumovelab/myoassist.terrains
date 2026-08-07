@@ -83,7 +83,14 @@ _CONNECTOR_SHININESS = 0.5
 
 
 @dataclass
-class _CellLayout:
+class CellLayout:
+    """World-space placement of one grid cell.
+
+    Public layout primitive: `compute_cell_layouts` returns these and
+    downstream consumers (e.g. the velocity map) read `center_x` / `center_y`
+    to place samples over the grid.
+    """
+
     row: int
     col: int
     center_x: float
@@ -240,12 +247,12 @@ def build_terrain(
     uniform_rgba = _read_uniform_rgba_from_style(output_dir)
     _register_palette_materials(spec, config, uniform_rgba, output_dir=output_dir)
 
-    layouts = _compute_cell_layouts(config)
+    layouts = compute_cell_layouts(config)
 
     # Resolve the final per-cell tile list: explicit `tiles` plus sampled
     # tiles for any cell not covered by an explicit entry (when a
     # randomization spec is supplied).
-    resolved_tiles = _resolve_tiles(config)
+    resolved_tiles = resolve_tiles(config)
 
     # Track per-cell base heights so connectors can match across cells.
     cell_results: dict[tuple[int, int], TileEmitResult] = {}
@@ -476,7 +483,7 @@ def _emit_uniform_hfield(
 # Layout
 
 
-def _resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
+def resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
     """Combine explicit `tiles` with sampled tiles for any uncovered cell.
 
     Explicit placements take precedence; randomization fills the rest.
@@ -486,6 +493,7 @@ def _resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
     out: list[TileConfig] = list(config.tiles)
 
     if config.randomization is None:
+        out.sort(key=lambda t: (t.row, t.col))  # row-major even without randomization (honor the docstring contract)
         return out
 
     rs = config.randomization
@@ -497,8 +505,7 @@ def _resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
             continue
         if type_name not in REGISTRY:
             raise ValueError(
-                f"randomization.weights references unknown tile type {type_name!r}; "
-                f"registered types: {sorted(REGISTRY)}"
+                f"randomization.weights references unknown tile type {type_name!r}; registered types: {sorted(REGISTRY)}"
             )
         types.append(type_name)
         weights_arr.append(float(w))
@@ -555,29 +562,20 @@ def _sample_tile_params(
 
     # User overrides (numeric range, categorical list, or fixed via [v, v]).
     for param_name, spec in user_ranges.items():
-        params[param_name] = _sample_user_spec(
-            rng, spec, type_name, param_name, params.get(param_name)
-        )
+        params[param_name] = _sample_user_spec(rng, spec, type_name, param_name, params.get(param_name))
 
     return params
 
 
 def _is_numeric_range(spec: list) -> bool:
-    return len(spec) == 2 and all(
-        isinstance(v, (int, float)) and not isinstance(v, bool) for v in spec
-    )
+    return len(spec) == 2 and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in spec)
 
 
 def _sample_user_spec(rng, spec, type_name: str, param_name: str, default_value):
     if not isinstance(spec, list):
-        raise ValueError(
-            f"randomization.param_ranges[{type_name!r}][{param_name!r}] must be a list, "
-            f"got {type(spec).__name__}"
-        )
+        raise ValueError(f"randomization.param_ranges[{type_name!r}][{param_name!r}] must be a list, got {type(spec).__name__}")
     if len(spec) == 0:
-        raise ValueError(
-            f"randomization.param_ranges[{type_name!r}][{param_name!r}] cannot be empty"
-        )
+        raise ValueError(f"randomization.param_ranges[{type_name!r}][{param_name!r}] cannot be empty")
     if _is_numeric_range(spec):
         return _sample_numeric(rng, float(spec[0]), float(spec[1]), default_value)
     return _sample_categorical(rng, spec)
@@ -596,7 +594,12 @@ def _sample_numeric(rng: np.random.Generator, lo: float, hi: float, default_valu
     return float(rng.uniform(float(lo), float(hi)))
 
 
-def _compute_cell_layouts(config: TerrainConfig) -> dict[tuple[int, int], _CellLayout]:
+def compute_cell_layouts(config: TerrainConfig) -> dict[tuple[int, int], CellLayout]:
+    """Compute the world-space center of every grid cell.
+
+    Returns a `{(row, col): CellLayout}` map. Public layout primitive shared by
+    the composer and downstream consumers (e.g. the velocity map).
+    """
     tw, tl = config.grid.tile_size
     bw = config.border.width
     rows, cols = config.grid.rows, config.grid.cols
@@ -607,10 +610,10 @@ def _compute_cell_layouts(config: TerrainConfig) -> dict[tuple[int, int], _CellL
     x_first = -total_w / 2 + tw / 2
     y_first = -total_l / 2 + tl / 2
 
-    layouts: dict[tuple[int, int], _CellLayout] = {}
+    layouts: dict[tuple[int, int], CellLayout] = {}
     for r in range(rows):
         for c in range(cols):
-            layouts[(r, c)] = _CellLayout(
+            layouts[(r, c)] = CellLayout(
                 row=r,
                 col=c,
                 center_x=x_first + c * (tw + bw),
@@ -743,9 +746,7 @@ def _resolve_connector_appearance(
 def _box_z_span(top_z: float) -> tuple[float, float]:
     """Return (center_z, half_z) for a box spanning [BASELINE_Z, top_z]."""
     if top_z <= BASELINE_Z:
-        raise ValueError(
-            f"box top_z={top_z:.3f} must be > BASELINE_Z={BASELINE_Z:.3f}"
-        )
+        raise ValueError(f"box top_z={top_z:.3f} must be > BASELINE_Z={BASELINE_Z:.3f}")
     half_z = (top_z - BASELINE_Z) / 2
     center_z = (top_z + BASELINE_Z) / 2
     return center_z, half_z
@@ -754,7 +755,7 @@ def _box_z_span(top_z: float) -> tuple[float, float]:
 def _emit_edge_connectors(
     spec: mj.MjSpec,
     config: TerrainConfig,
-    layouts: dict[tuple[int, int], _CellLayout],
+    layouts: dict[tuple[int, int], CellLayout],
     cell_results: dict[tuple[int, int], TileEmitResult],
     appearance: _Appearance,
 ) -> None:
@@ -806,7 +807,7 @@ def _emit_edge_connectors(
 def _emit_corner_connectors(
     spec: mj.MjSpec,
     config: TerrainConfig,
-    layouts: dict[tuple[int, int], _CellLayout],
+    layouts: dict[tuple[int, int], CellLayout],
     cell_results: dict[tuple[int, int], TileEmitResult],
     appearance: _Appearance,
 ) -> None:
