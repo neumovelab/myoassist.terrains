@@ -59,6 +59,16 @@ _UNIFORM_MATERIAL_NAME = "myoassist_mat_uniform"
 _UNIFORM_RGBA: tuple[float, float, float, float] = (0.78, 0.78, 0.78, 1.0)
 _UNIFORM_SPECULAR = 0.5
 _UNIFORM_SHININESS = 0.5
+# Default floor styling for uniform terrain -- mirrors the legacy `matfloor`:
+# a built-in flat 2D texture (a muted blue-grey) with edge marks (a fine grid)
+# and low reflectance.  Overridable via config.texture / config.palette.
+_MATFLOOR_RGB1: tuple[float, float, float] = (0.353, 0.439, 0.529)
+_MATFLOOR_MARKRGB: tuple[float, float, float] = (0.8, 0.8, 0.8)
+_MATFLOOR_REFLECTANCE = 0.05
+# Rendered grid spacing (m) for uniform planes; matches the legacy plane's
+# `size="0 0 0.05"`.  half_x = half_y = 0 renders an infinite plane; a plane is
+# analytically infinite for collision regardless.
+_PLANE_GRID_SPACING = 0.05
 
 # Material name prefix for diverse/custom-mode palette materials registered
 # in the generated terrain XML's <asset> block.
@@ -176,6 +186,26 @@ def _bind_uniform_texture(
     material.texuniform = bool(texture.texuniform)
 
 
+def _bind_default_floor_texture(spec: mj.MjSpec, material) -> None:
+    """Bind the default `matfloor` look: a built-in flat 2D texture with edge
+    marks (a fine grid), mirroring the legacy terrain_style convention.  Used
+    when the config supplies no explicit texture."""
+    spec.add_texture(
+        name="terrain_texfloor",
+        type=mj.mjtTexture.mjTEXTURE_2D,
+        builtin=mj.mjtBuiltin.mjBUILTIN_FLAT,
+        width=128,
+        height=128,
+        rgb1=list(_MATFLOOR_RGB1),
+        rgb2=list(_MATFLOOR_RGB1),
+        mark=mj.mjtMark.mjMARK_EDGE,
+        markrgb=list(_MATFLOOR_MARKRGB),
+    )
+    material.textures[mj.mjtTextureRole.mjTEXROLE_RGB] = "terrain_texfloor"
+    material.texrepeat = [1, 1]
+    material.texuniform = True
+
+
 def build_terrain(
     config: TerrainConfig | UniformTerrainConfig,
     output_dir: Optional[Path] = None,
@@ -291,17 +321,24 @@ def _build_uniform(
     spec.compiler.degree = False
     spec.modelname = config.terrain_name
 
-    uniform_rgba = _read_uniform_rgba_from_style(output_dir)
+    # Horizon haze (fog) = the ground color, so an infinite plane fades into
+    # its own color at the horizon instead of MuJoCo's default white.  compose
+    # propagates this onto the consuming model's <visual>.
+    spec.visual.rgba.haze = [*_MATFLOOR_RGB1, 1.0]
+
     material = spec.add_material(
         name=_UNIFORM_MATERIAL_NAME,
         rgba=[1.0, 1.0, 1.0, 1.0],
         specular=_UNIFORM_SPECULAR,
         shininess=_UNIFORM_SHININESS,
+        reflectance=_MATFLOOR_REFLECTANCE,
     )
     if config.texture is not None:
         _bind_uniform_texture(spec, material, config.texture, output_dir)
+    else:
+        _bind_default_floor_texture(spec, material)
 
-    appearance = _resolve_uniform_appearance(config, uniform_rgba)
+    appearance = _resolve_uniform_appearance(config)
 
     if config.terrain in ("flat", "slope"):
         _emit_uniform_plane(spec, config, appearance)
@@ -313,11 +350,11 @@ def _build_uniform(
 
 def _resolve_uniform_appearance(
     config: UniformTerrainConfig,
-    uniform_rgba: tuple[float, float, float, float],
 ) -> _Appearance:
-    """Pick the surface rgba: a `palette` override if given, else the style
-    file's `terrain_mat` color. Always uses the shared uniform material."""
-    rgba: tuple[float, float, float, float] = uniform_rgba
+    """Pick the surface rgba.  Default is white so the material's texture (the
+    `matfloor` grid) shows through unmodulated; a `palette` override tints it.
+    Always uses the shared uniform material."""
+    rgba: tuple[float, float, float, float] = (1.0, 1.0, 1.0, 1.0)
     for key in (config.terrain, "uniform", "terrain"):
         if key in config.palette:
             override = config.palette[key]
@@ -345,12 +382,13 @@ def _emit_uniform_plane(
         beta = -math.radians(config.deg)
         quat = [math.cos(beta / 2.0), 0.0, math.sin(beta / 2.0), 0.0]
 
-    half = config.extent / 2.0
     geom_kwargs: dict = {
         "type": mj.mjtGeom.mjGEOM_PLANE,
-        # Plane size = (half_x, half_y, grid_spacing); a plane is analytically
-        # infinite for collision, so these bound only the rendered patch.
-        "size": [half, half, 1.0],
+        # Plane size = (half_x, half_y, grid_spacing).  half_x = half_y = 0
+        # renders an infinite plane (matching the legacy ground); the third
+        # value is the visual grid spacing.  A plane is analytically infinite
+        # for collision regardless.
+        "size": [0.0, 0.0, _PLANE_GRID_SPACING],
         "pos": [0.0, 0.0, 0.0],
         "quat": quat,
         "contype": 1,

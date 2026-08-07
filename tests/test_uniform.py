@@ -166,6 +166,22 @@ def test_flat_plane_passes_through_origin():
     assert model.geom("terrain").pos[2] == pytest.approx(0.0)
 
 
+def test_flat_matches_legacy_matfloor_styling():
+    """The default flat plane reproduces the legacy `matfloor` look: an
+    infinite plane (size 0 0 0.05), a textured low-reflectance material, and a
+    horizon haze matching the ground color."""
+    model = build_terrain(_config_from_dict({"terrain": "flat"})).compile()
+    # infinite plane (half_x = half_y = 0), 0.05 render grid spacing
+    assert list(model.geom("terrain").size) == pytest.approx([0.0, 0.0, 0.05])
+    # matfloor material: textured + low reflectance
+    reflectance = float(model.material("myoassist_mat_uniform").reflectance)
+    assert reflectance == pytest.approx(0.05)
+    assert model.ntex >= 1
+    # horizon haze == ground color (matfloor rgb1) so the plane fades into itself
+    haze = list(model.vis.rgba.haze)[:3]
+    assert haze == pytest.approx([0.353, 0.439, 0.529], abs=1e-3)
+
+
 # ---------------------------------------------------------------------------
 # Build: random / sinusoidal heightfields
 
