@@ -27,6 +27,7 @@ height around their full perimeter (v1 flat-at-base contract).
 
 from __future__ import annotations
 
+import math
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,7 +36,13 @@ from typing import Optional
 import mujoco as mj
 import numpy as np
 
-from myoassist_terrains.config import TerrainConfig, TextureConfig, TileConfig
+from myoassist_terrains import uniform as uniform_gen
+from myoassist_terrains.config import (
+    TerrainConfig,
+    TextureConfig,
+    TileConfig,
+    UniformTerrainConfig,
+)
 from myoassist_terrains.registry import lookup
 from myoassist_terrains.tiles import REGISTRY
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
@@ -52,6 +59,16 @@ _UNIFORM_MATERIAL_NAME = "myoassist_mat_uniform"
 _UNIFORM_RGBA: tuple[float, float, float, float] = (0.78, 0.78, 0.78, 1.0)
 _UNIFORM_SPECULAR = 0.5
 _UNIFORM_SHININESS = 0.5
+# Default floor styling for uniform terrain -- mirrors the legacy `matfloor`:
+# a built-in flat 2D texture (a muted blue-grey) with edge marks (a fine grid)
+# and low reflectance.  Overridable via config.texture / config.palette.
+_MATFLOOR_RGB1: tuple[float, float, float] = (0.353, 0.439, 0.529)
+_MATFLOOR_MARKRGB: tuple[float, float, float] = (0.8, 0.8, 0.8)
+_MATFLOOR_REFLECTANCE = 0.05
+# Rendered grid spacing (m) for uniform planes; matches the legacy plane's
+# `size="0 0 0.05"`.  half_x = half_y = 0 renders an infinite plane; a plane is
+# analytically infinite for collision regardless.
+_PLANE_GRID_SPACING = 0.05
 
 # Material name prefix for diverse/custom-mode palette materials registered
 # in the generated terrain XML's <asset> block.
@@ -176,19 +193,51 @@ def _bind_uniform_texture(
     material.texuniform = bool(texture.texuniform)
 
 
+def _bind_default_floor_texture(spec: mj.MjSpec, material) -> None:
+    """Bind the default `matfloor` look: a built-in flat 2D texture with edge
+    marks (a fine grid), mirroring the legacy terrain_style convention.  Used
+    when the config supplies no explicit texture."""
+    spec.add_texture(
+        name="terrain_texfloor",
+        type=mj.mjtTexture.mjTEXTURE_2D,
+        builtin=mj.mjtBuiltin.mjBUILTIN_FLAT,
+        width=128,
+        height=128,
+        rgb1=list(_MATFLOOR_RGB1),
+        rgb2=list(_MATFLOOR_RGB1),
+        mark=mj.mjtMark.mjMARK_EDGE,
+        markrgb=list(_MATFLOOR_MARKRGB),
+    )
+    material.textures[mj.mjtTextureRole.mjTEXROLE_RGB] = "terrain_texfloor"
+    material.texrepeat = [1, 1]
+    material.texuniform = True
+
+
 def build_terrain(
-    config: TerrainConfig,
+    config: TerrainConfig | UniformTerrainConfig,
     output_dir: Optional[Path] = None,
 ) -> mj.MjSpec:
-    """Build a MuJoCo MjSpec from a TerrainConfig and return it.
+    """Build a MuJoCo MjSpec from a terrain config and return it.
+
+    Accepts either config form:
+      * `TerrainConfig` -> the grid/tile path below (tiles + connectors +
+        transparent backstop).
+      * `UniformTerrainConfig` -> a single plane or heightfield surface via
+        `_build_uniform` (see `uniform.py`).
 
     `output_dir` is where hfield-backed tiles (e.g. `rough`) write their
     PNG files. Required if any such tile is present in the config; ignored
-    by purely-procedural tiles (flat, stairs, slope).
+    by purely-procedural tiles (flat, stairs, slope) and by the uniform path
+    (its heightfield data is baked into the spec, not written to disk).
+    `output_dir` is still used to resolve an optional `texture` in either
+    form.
 
     Caller is responsible for either compiling (`spec.compile()`) or writing
     the XML (`emit_xml_include(spec)` for the include-friendly form).
     """
+    if isinstance(config, UniformTerrainConfig):
+        return _build_uniform(config, output_dir)
+
     spec = mj.MjSpec()
     spec.compiler.degree = False
     spec.modelname = config.terrain_name
@@ -249,6 +298,185 @@ def build_terrain(
     _emit_terrain_floor(spec, config, cell_results)
 
     return spec
+
+
+# ---------------------------------------------------------------------------
+# Uniform (single-surface) path
+
+
+# The primary uniform geom is named `terrain` (the same name the grid path
+# gives its backstop) so model XMLs that declare `<contact><pair
+# geom1="terrain" .../>` resolve against the walkable surface directly. In
+# the uniform path this geom IS the terrain, so no separate backstop is
+# emitted.
+_UNIFORM_GEOM_NAME = "terrain"
+_UNIFORM_HFIELD_NAME = "terrain_hfield"
+
+
+def _build_uniform(
+    config: UniformTerrainConfig,
+    output_dir: Optional[Path],
+) -> mj.MjSpec:
+    """Build a single-surface (plane or heightfield) terrain spec.
+
+    Reuses the tile path's uniform-material machinery: one shared material
+    (`myoassist_mat_uniform`) whose rgba tracks `terrain_style.xml`, plus an
+    optional bound texture. The surface color is set explicitly on the geom
+    so it overrides any inherited default-class rgba in the consuming model.
+    """
+    spec = mj.MjSpec()
+    spec.compiler.degree = False
+    spec.modelname = config.terrain_name
+
+    # Horizon haze (fog) = the ground color, so an infinite plane fades into
+    # its own color at the horizon instead of MuJoCo's default white.  compose
+    # propagates this onto the consuming model's <visual>.
+    spec.visual.rgba.haze = [*_MATFLOOR_RGB1, 1.0]
+
+    material = spec.add_material(
+        name=_UNIFORM_MATERIAL_NAME,
+        rgba=[1.0, 1.0, 1.0, 1.0],
+        specular=_UNIFORM_SPECULAR,
+        shininess=_UNIFORM_SHININESS,
+        reflectance=_MATFLOOR_REFLECTANCE,
+    )
+    if config.texture is not None:
+        _bind_uniform_texture(spec, material, config.texture, output_dir)
+    else:
+        _bind_default_floor_texture(spec, material)
+
+    appearance = _resolve_uniform_appearance(config)
+
+    if config.terrain in ("flat", "slope"):
+        _emit_uniform_plane(spec, config, appearance)
+    else:  # 'random' | 'sinusoidal'
+        _emit_uniform_hfield(spec, config, appearance)
+
+    return spec
+
+
+def _resolve_uniform_appearance(
+    config: UniformTerrainConfig,
+) -> _Appearance:
+    """Pick the surface rgba.  Default is white so the material's texture (the
+    `matfloor` grid) shows through unmodulated; a `palette` override tints it.
+    Always uses the shared uniform material."""
+    rgba: tuple[float, float, float, float] = (1.0, 1.0, 1.0, 1.0)
+    for key in (config.terrain, "uniform", "terrain"):
+        if key in config.palette:
+            override = config.palette[key]
+            rgba = (override[0], override[1], override[2], override[3])
+            break
+    return _Appearance(rgba=_safe_rgba(rgba), material=_UNIFORM_MATERIAL_NAME)
+
+
+def _emit_uniform_plane(
+    spec: mj.MjSpec,
+    config: UniformTerrainConfig,
+    appearance: _Appearance,
+) -> None:
+    """Emit a single `mjGEOM_PLANE` through the origin.
+
+    For `slope`, tilt the plane by `deg` about +y -- the axis perpendicular
+    to the +x walking direction -- so the grade is constant and uphill in
+    +x. The quaternion is a rotation about +y by `-deg` (radians): this maps
+    the plane's local +z normal to (sin(deg), 0, cos(deg)), giving surface
+    height z = tan(deg) * x (rising in the walking direction) while keeping
+    the plane through the origin so the opening pose sits at z ~= 0.
+    """
+    quat = [1.0, 0.0, 0.0, 0.0]
+    if config.terrain == "slope":
+        beta = -math.radians(config.deg)
+        quat = [math.cos(beta / 2.0), 0.0, math.sin(beta / 2.0), 0.0]
+
+    geom_kwargs: dict = {
+        "type": mj.mjtGeom.mjGEOM_PLANE,
+        # Plane size = (half_x, half_y, grid_spacing).  half_x = half_y = 0
+        # renders an infinite plane (matching the legacy ground); the third
+        # value is the visual grid spacing.  A plane is analytically infinite
+        # for collision regardless.
+        "size": [0.0, 0.0, _PLANE_GRID_SPACING],
+        "pos": [0.0, 0.0, 0.0],
+        "quat": quat,
+        "contype": 1,
+        "conaffinity": 1,
+    }
+    if appearance.material is not None:
+        geom_kwargs["material"] = appearance.material
+    if appearance.rgba is not None:
+        geom_kwargs["rgba"] = list(appearance.rgba)
+    spec.worldbody.add_geom(name=_UNIFORM_GEOM_NAME, **geom_kwargs)
+
+
+def _emit_uniform_hfield(
+    spec: mj.MjSpec,
+    config: UniformTerrainConfig,
+    appearance: _Appearance,
+) -> None:
+    """Emit ONE heightfield geom for `random`/`sinusoidal` terrain.
+
+    The elevation grid is generated in physical meters with a smooth safe
+    zone flattening it toward 0 around the origin, then baked into the hfield
+    via `userdata`. MuJoCo renormalizes `userdata` to [0, 1] using its own
+    min/max and multiplies by `size[2]`; we set `size[2]` to the generated
+    relief (max - min) so the emitted surface reproduces the physical heights
+    exactly. The geom sits at z=0 with the surface minimum (the safe zone) at
+    z=0, so a model resets flush with the ground.
+    """
+    n = config.resolution
+    half = config.extent / 2.0
+
+    if config.terrain == "random":
+        field = uniform_gen.generate_random_field(
+            nrow=n,
+            ncol=n,
+            half_x=half,
+            half_y=half,
+            amplitude=config.amplitude,
+            safe_radius=config.safe_zone_radius,
+            seed=config.seed,
+        )
+    else:  # 'sinusoidal'
+        field = uniform_gen.generate_sinusoidal_field(
+            nrow=n,
+            ncol=n,
+            half_x=half,
+            half_y=half,
+            amplitude=config.amplitude,
+            period=config.period,
+            safe_radius=config.safe_zone_radius,
+        )
+
+    dmin = float(field.min())
+    dmax = float(field.max())
+    relief = dmax - dmin
+    # A perfectly flat field (relief 0) would give a degenerate hfield; fall
+    # back to a nominal relief (the surface stays flat regardless).
+    if relief < 1e-9:
+        relief = max(config.amplitude, 1e-3)
+
+    hfield = spec.add_hfield(
+        name=_UNIFORM_HFIELD_NAME,
+        nrow=n,
+        ncol=n,
+        size=[half, half, relief, config.base_depth],
+    )
+    # Shift so the minimum is 0; MuJoCo's renormalization (min->0, max->1)
+    # then reproduces `field - dmin` after scaling by size[2]=relief.
+    hfield.userdata = (field - dmin).reshape(-1).astype(np.float64)
+
+    geom_kwargs: dict = {
+        "type": mj.mjtGeom.mjGEOM_HFIELD,
+        "hfieldname": _UNIFORM_HFIELD_NAME,
+        "pos": [0.0, 0.0, 0.0],
+        "contype": 1,
+        "conaffinity": 1,
+    }
+    if appearance.material is not None:
+        geom_kwargs["material"] = appearance.material
+    if appearance.rgba is not None:
+        geom_kwargs["rgba"] = list(appearance.rgba)
+    spec.worldbody.add_geom(name=_UNIFORM_GEOM_NAME, **geom_kwargs)
 
 
 # ---------------------------------------------------------------------------
