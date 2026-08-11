@@ -11,9 +11,15 @@ symbols are exposed under their module paths (e.g. ``composer.emit_xml_include``
 ``config_from_dict``). See ``docs/python-api.md``.
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from myoassist_terrains.composer import build_terrain
 from myoassist_terrains.registry import register_tile
 
-__version__ = "0.1.0"
+# Read from installed package metadata (pyproject.toml is the single source of truth).
+try:
+    __version__ = version("myoassist-terrains")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
 
 __all__ = ["build_terrain", "register_tile", "__version__"]
