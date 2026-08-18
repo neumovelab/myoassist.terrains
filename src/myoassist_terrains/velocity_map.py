@@ -15,6 +15,7 @@ import numpy as np
 
 from myoassist_terrains.config import TerrainConfig, TileConfig
 from myoassist_terrains.composer import compute_cell_layouts, resolve_tiles
+from myoassist_terrains.surface import TerrainSurface
 from myoassist_terrains.tiles import REGISTRY
 
 
@@ -75,6 +76,10 @@ def generate_velocity_map(
 
     layouts = compute_cell_layouts(config)
     tiles = resolve_tiles(config)
+    # One surface for the whole map: it resolves the tiles and the cell layout
+    # once, instead of rebuilding them on each of the five height queries every
+    # sample makes.
+    surface = TerrainSurface(config)
     tw, tl = config.grid.tile_size
 
     offsets_x = _sample_offsets(tw, samples_per_tile)
@@ -98,8 +103,8 @@ def generate_velocity_map(
                     direction_xy = _tile_direction_xy(tile, ox, oy, goal_direction_xy, tile_radial_mode)
                 else:
                     direction_xy = goal_direction_xy
-                direction, grade = _direction_and_grade(config, tiles, x, y, z, direction_xy)
-                roughness = _local_surface_roughness(config, tiles, x, y, z)
+                direction, grade = _direction_and_grade(surface, x, y, z, direction_xy)
+                roughness = _local_surface_roughness(surface, x, y, z)
                 speed = base_speed * scale * _grade_speed_scale(max(grade, roughness)) * jitter
                 velocity = direction * speed
                 out.append(
@@ -171,8 +176,7 @@ def _goal_direction_xy(x: float, y: float, goal: np.ndarray) -> np.ndarray:
 
 
 def _direction_and_grade(
-    config: TerrainConfig,
-    tiles: Iterable[TileConfig],
+    surface: TerrainSurface,
     x: float,
     y: float,
     z: float,
@@ -186,7 +190,7 @@ def _direction_and_grade(
     step_xy = direction_xy / norm_xy
     probe_distance = 0.5
     probe_xy = np.asarray([x, y], dtype=float) + step_xy * probe_distance
-    probe_z = surface_height_at(config, tiles, float(probe_xy[0]), float(probe_xy[1]))
+    probe_z = surface.height_at(float(probe_xy[0]), float(probe_xy[1]))
     direction = np.asarray([step_xy[0], step_xy[1], probe_z - z], dtype=float)
     norm = float(np.linalg.norm(direction))
     assert norm > 1e-12
@@ -298,36 +302,30 @@ def _smooth_sample_speeds(
     return smoothed
 
 
-def _local_surface_roughness(
-    config: TerrainConfig,
-    tiles: Iterable[TileConfig],
-    x: float,
-    y: float,
-    z: float,
-) -> float:
+def _local_surface_roughness(surface: TerrainSurface, x: float, y: float, z: float) -> float:
     """Estimate local surface unevenness independent of goal direction."""
     probe = 0.35
     heights = [
-        surface_height_at(config, tiles, x + probe, y),
-        surface_height_at(config, tiles, x - probe, y),
-        surface_height_at(config, tiles, x, y + probe),
-        surface_height_at(config, tiles, x, y - probe),
+        surface.height_at(x + probe, y),
+        surface.height_at(x - probe, y),
+        surface.height_at(x, y + probe),
+        surface.height_at(x, y - probe),
     ]
     return max(abs(float(h - z)) / probe for h in heights)
 
 
 def surface_height_at(
     config: TerrainConfig,
-    tiles: Iterable[TileConfig],
+    tiles: Iterable[TileConfig] | None,
     x: float,
     y: float,
 ) -> float:
-    layouts = compute_cell_layouts(config)
-    tw, tl = config.grid.tile_size
-    for tile in tiles:
-        layout = layouts[(tile.row, tile.col)]
-        local_x = x - layout.center_x
-        local_y = y - layout.center_y
-        if abs(local_x) <= tw / 2 and abs(local_y) <= tl / 2:
-            return estimate_surface_height(tile, local_x, local_y, config.grid.tile_size)
-    return 0.0
+    """Walkable surface height at world (x, y).
+
+    Kept for the documented signature. `tiles` is accepted and ignored:
+    `TerrainSurface` resolves the tiles itself, randomized ones included, so the
+    caller no longer has to pre-resolve them. New code should prefer
+    `myoassist_terrains.surface_height_at(config, x, y)`, which also handles the
+    uniform config form and reports connector-strip heights instead of 0.0.
+    """
+    return TerrainSurface(config).height_at(x, y)

@@ -115,8 +115,14 @@ def surface_height(
     """Walkable surface height: the stone top where one covers (x, y), else base."""
     half_stone = float(stone_size) / 2
     for sx, sy in _stones(
-        int(seed), int(rows), int(cols), float(stone_size), float(jitter_frac),
-        float(edge_margin), float(tile_size[0]), float(tile_size[1])
+        int(seed),
+        int(rows),
+        int(cols),
+        float(stone_size),
+        float(jitter_frac),
+        float(edge_margin),
+        float(tile_size[0]),
+        float(tile_size[1]),
     ):
         if abs(local_x - sx) <= half_stone and abs(local_y - sy) <= half_stone:
             return float(base_height) + float(stone_height)
@@ -191,8 +197,14 @@ def emit(
     #    draw so `surface_height` reports exactly this geometry.
     half_stone = stone_size / 2
     placement = _stones(
-        int(seed), int(rows), int(cols), float(stone_size), float(jitter_frac),
-        float(edge_margin), float(tile_size[0]), float(tile_size[1])
+        int(seed),
+        int(rows),
+        int(cols),
+        float(stone_size),
+        float(jitter_frac),
+        float(edge_margin),
+        float(tile_size[0]),
+        float(tile_size[1]),
     )
     for stone_idx, (local_x, local_y) in enumerate(placement):
         spec.worldbody.add_geom(

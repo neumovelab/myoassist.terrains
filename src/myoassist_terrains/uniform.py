@@ -27,6 +27,9 @@ generated relief to reproduce the physical heights faithfully).
 
 from __future__ import annotations
 
+import math
+from functools import lru_cache
+
 import numpy as np
 
 
@@ -112,3 +115,104 @@ def generate_sinusoidal_field(
     xx, yy = _grid(nrow, ncol, half_x, half_y)
     field = float(amplitude) * 0.5 * (1.0 + np.sin(2.0 * np.pi * xx / float(period)))
     return field * safe_zone_mask(xx, yy, float(safe_radius))
+
+
+# ---------------------------------------------------------------------------
+# Elevation field + surface height
+#
+# `composer._emit_uniform_hfield` and `surface_height` below both go through
+# `elevation_field`, so the height reported for a uniform terrain cannot drift
+# from the heightfield that was emitted.
+
+
+@lru_cache(maxsize=32)
+def _cached_field(
+    terrain: str,
+    nrow: int,
+    ncol: int,
+    half_x: float,
+    half_y: float,
+    amplitude: float,
+    period: float,
+    safe_radius: float,
+    seed: int,
+) -> tuple[np.ndarray, float, float]:
+    if terrain == "random":
+        field = generate_random_field(
+            nrow=nrow,
+            ncol=ncol,
+            half_x=half_x,
+            half_y=half_y,
+            amplitude=amplitude,
+            safe_radius=safe_radius,
+            seed=seed,
+        )
+    else:
+        field = generate_sinusoidal_field(
+            nrow=nrow,
+            ncol=ncol,
+            half_x=half_x,
+            half_y=half_y,
+            amplitude=amplitude,
+            period=period,
+            safe_radius=safe_radius,
+        )
+    dmin = float(field.min())
+    relief = float(field.max()) - dmin
+    # A perfectly flat field would give a degenerate hfield; fall back to a
+    # nominal relief (the surface stays flat regardless).
+    if relief < 1e-9:
+        relief = max(amplitude, 1e-3)
+    return field, dmin, relief
+
+
+def elevation_field(config) -> tuple[np.ndarray, float, float]:
+    """Return (field, dmin, relief) for a heightfield-backed uniform terrain.
+
+    `field` is in physical meters. The composer bakes `field - dmin` into the
+    hfield's userdata with `size[2] = relief`, and MuJoCo's renormalization then
+    reproduces `field - dmin` exactly, so the emitted surface height at a point
+    is `field - dmin`.
+    """
+    if config.terrain not in ("random", "sinusoidal"):
+        raise ValueError(f"elevation_field is only defined for random/sinusoidal terrain, got {config.terrain!r}")
+    half = config.extent / 2.0
+    return _cached_field(
+        config.terrain,
+        config.resolution,
+        config.resolution,
+        half,
+        half,
+        float(config.amplitude),
+        float(config.period),
+        float(config.safe_zone_radius),
+        int(config.seed),
+    )
+
+
+def surface_height(config, x: float, y: float) -> float:
+    """Walkable surface height of a uniform terrain at world (x, y).
+
+    `flat` is z=0. `slope` is the plane through the origin tilted about +y, so
+    z = tan(deg) * x, rising in the +x walking direction. `random` and
+    `sinusoidal` sample the emitted elevation field bilinearly.
+    """
+    if config.terrain == "flat":
+        return 0.0
+    if config.terrain == "slope":
+        return float(math.tan(math.radians(config.deg)) * x)
+
+    field, dmin, _relief = elevation_field(config)
+    nrow, ncol = field.shape
+    half = config.extent / 2.0
+    # `_grid` lays the field out with columns along +x and rows along +y.
+    u = (x + half) / (2.0 * half)
+    v = (y + half) / (2.0 * half)
+    px = max(0.0, min(ncol - 1.0, u * (ncol - 1)))
+    py = max(0.0, min(nrow - 1.0, v * (nrow - 1)))
+    x0, y0 = int(np.floor(px)), int(np.floor(py))
+    x1, y1 = min(x0 + 1, ncol - 1), min(y0 + 1, nrow - 1)
+    tx, ty = px - x0, py - y0
+    lo = field[y0, x0] * (1.0 - tx) + field[y0, x1] * tx
+    hi = field[y1, x0] * (1.0 - tx) + field[y1, x1] * tx
+    return float(lo * (1.0 - ty) + hi * ty - dmin)

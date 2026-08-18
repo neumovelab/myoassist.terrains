@@ -40,11 +40,27 @@ ROUGH_PARAMS = {"seed": 11, "grid_resolution": 64, "vertical_relief": 0.9}
 PERIMETER_TOL = {"rough": 4e-3}
 PERIMETER_TOL_DEFAULT = 1e-3
 
-# Height-model tolerance. Box tiles are exact. `rough` compares a bilinear
-# sample of the heightmap against MuJoCo's hfield triangulation, on top of the
-# quantisation floor, so it gets more room.
-HEIGHT_TOL = {"rough": 2.5e-2}
+# Height-model tolerance. Box-geometry tiles are exact against a ray cast.
 HEIGHT_TOL_DEFAULT = 1e-3
+
+# `rough` is excluded from the ray-cast comparison and gets a stricter, separate
+# check instead (`test_rough_height_is_node_exact`). Between hfield nodes MuJoCo
+# triangulates each quad while the height model samples bilinearly, and on a noise
+# field the two differ by up to the local cell-to-cell variation -- tens of mm.
+# Asserting that loosely would hide real error; asserting node-exactness with no
+# tolerance pins everything that can actually break.
+HEIGHT_RAYCAST_EXEMPT = {"rough"}
+
+# mj_ray degenerates on heightfields when a probe lands exactly on a triangle
+# edge: it misses and reports the hfield's base plane instead of the surface.
+# There are two such families -- a probe exactly on a node line (seen at x=2.0000
+# on a 64-node, 12 m field, where the fractional node index is 42.000) and a probe
+# on the quad diagonal, which is any point with x == y on a square grid. So the
+# two axes get DIFFERENT irregular nudges: equal nudges would still put the whole
+# x == y diagonal on the degenerate edge. Without this the tolerances have to be
+# loosened to roughly a full relief, which would hide real error.
+_NUDGE_X = 0.00371
+_NUDGE_Y = 0.00713
 
 # `inverted` is offered by these tiles and is selected 50% of the time under
 # randomization, so it is part of the default surface, not an edge case.
@@ -125,8 +141,8 @@ def _perimeter_probes(inset: float = 2e-3, n: int = 9):
 
 def _interior_probes(n: int = 7):
     half_x, half_y = TILE_SIZE[0] / 2, TILE_SIZE[1] / 2
-    for x in np.linspace(-half_x * 0.92, half_x * 0.92, n):
-        for y in np.linspace(-half_y * 0.92, half_y * 0.92, n):
+    for x in np.linspace(-half_x * 0.92, half_x * 0.92, n) + _NUDGE_X:
+        for y in np.linspace(-half_y * 0.92, half_y * 0.92, n) + _NUDGE_Y:
             yield float(x), float(y)
 
 
@@ -144,7 +160,7 @@ def _contract_cases(xfails: dict):
 @pytest.mark.parametrize(
     "tile_type,inverted",
     list(_contract_cases(PERIMETER_XFAIL)),
-    ids=lambda v: (v if isinstance(v, str) else ("inverted" if v else "upright")),
+    ids=lambda v: v if isinstance(v, str) else ("inverted" if v else "upright"),
 )
 def test_perimeter_is_flat_at_base_height(tile_type: str, inverted: bool, tmp_path):
     """Every tile edge sits at base_height, so a connector joins it cleanly."""
@@ -184,13 +200,16 @@ def test_gap_is_the_only_perimeter_exception(tmp_path):
 @pytest.mark.parametrize(
     "tile_type,inverted",
     list(_contract_cases(HEIGHT_XFAIL)),
-    ids=lambda v: (v if isinstance(v, str) else ("inverted" if v else "upright")),
+    ids=lambda v: v if isinstance(v, str) else ("inverted" if v else "upright"),
 )
 def test_surface_height_matches_emitted_geometry(tile_type: str, inverted: bool, tmp_path):
     """The height model agrees with the surface the tile actually emits."""
+    if tile_type in HEIGHT_RAYCAST_EXEMPT:
+        pytest.skip(f"{tile_type} is checked node-exactly instead; see test_rough_height_is_node_exact")
+
     params = _params(tile_type, inverted)
     model, data, tile = _build(tile_type, params, tmp_path)
-    tol = HEIGHT_TOL.get(tile_type, HEIGHT_TOL_DEFAULT)
+    tol = HEIGHT_TOL_DEFAULT
 
     worst_err, worst_at, compared = 0.0, None, 0
     for x, y in _interior_probes():
@@ -208,3 +227,29 @@ def test_surface_height_matches_emitted_geometry(tile_type: str, inverted: bool,
         f"{tile_type}{' inverted' if inverted else ''}: estimate_surface_height is off by "
         f"{worst_err:+.4f} m at {worst_at} over {compared} probes (tolerance {tol})"
     )
+
+
+def test_rough_height_is_node_exact(tmp_path):
+    """`rough`'s height model reproduces the compiled elevation exactly at nodes.
+
+    Stronger than the ray-cast comparison the other tiles get: no tolerance. It
+    pins the origin (which has to invert MuJoCo's renormalization), the scale, and
+    the row inversion between the written PNG and the loaded heightfield -- the
+    last of which was mirroring the whole tile.
+    """
+    model, data, tile = _build("rough", _params("rough"), tmp_path)
+    nrow, ncol = int(model.hfield_nrow[0]), int(model.hfield_ncol[0])
+    geom_z = float(model.geom_pos[model.geom("rough_r0c0_geom").id][2])
+    elevation = geom_z + model.hfield_data.reshape(nrow, ncol) * float(model.hfield_size[0][2])
+    xs = np.linspace(-TILE_SIZE[0] / 2, TILE_SIZE[0] / 2, ncol)
+    ys = np.linspace(-TILE_SIZE[1] / 2, TILE_SIZE[1] / 2, nrow)
+
+    worst, worst_at = 0.0, None
+    for ci in range(2, ncol - 2, 3):
+        for ri in range(2, nrow - 2, 3):
+            err = estimate_surface_height(tile, float(xs[ci]), float(ys[ri]), TILE_SIZE) - float(elevation[ri, ci])
+            if abs(err) > abs(worst):
+                worst, worst_at = err, (ci, ri)
+    # 1 um, not 0: MuJoCo stores hfield_data as float32, so a round trip
+    # through it carries ~1e-8 m of noise at these amplitudes.
+    assert worst == pytest.approx(0.0, abs=1e-6), f"rough: node (col, row)={worst_at} is off by {worst:+.9f} m"

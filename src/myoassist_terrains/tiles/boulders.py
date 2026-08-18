@@ -110,8 +110,13 @@ def surface_height(
     size_range = tuple(size_range)
     top = float(base_height)
     for bx, by, rx, ry, rz in _boulders(
-        int(seed), float(density), float(size_range[0]), float(size_range[1]),
-        float(edge_margin), float(tile_size[0]), float(tile_size[1])
+        int(seed),
+        float(density),
+        float(size_range[0]),
+        float(size_range[1]),
+        float(edge_margin),
+        float(tile_size[0]),
+        float(tile_size[1]),
     ):
         nx = (local_x - bx) / rx
         ny = (local_y - by) / ry
@@ -182,8 +187,13 @@ def emit(
     #    `surface_height` reports exactly this geometry.
     try:
         placement = _boulders(
-            int(seed), float(density), float(size_range[0]), float(size_range[1]),
-            float(edge_margin), float(tile_size[0]), float(tile_size[1])
+            int(seed),
+            float(density),
+            float(size_range[0]),
+            float(size_range[1]),
+            float(edge_margin),
+            float(tile_size[0]),
+            float(tile_size[1]),
         )
     except ValueError as exc:
         raise ValueError(f"boulders '{name}': {exc}") from exc

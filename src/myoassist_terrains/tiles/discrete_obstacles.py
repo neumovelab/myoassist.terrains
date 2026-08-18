@@ -105,9 +105,15 @@ def surface_height(
     size_range, height_range = tuple(size_range), tuple(height_range)
     top = float(base_height)
     for ox, oy, half_x, half_y, height in _obstacles(
-        int(seed), float(density), float(size_range[0]), float(size_range[1]),
-        float(height_range[0]), float(height_range[1]), float(edge_margin),
-        float(tile_size[0]), float(tile_size[1])
+        int(seed),
+        float(density),
+        float(size_range[0]),
+        float(size_range[1]),
+        float(height_range[0]),
+        float(height_range[1]),
+        float(edge_margin),
+        float(tile_size[0]),
+        float(tile_size[1]),
     ):
         if abs(local_x - ox) <= half_x and abs(local_y - oy) <= half_y:
             top = max(top, float(base_height) + height)
@@ -172,9 +178,15 @@ def emit(
     #    reports exactly this geometry.
     try:
         placement = _obstacles(
-            int(seed), float(density), float(size_range[0]), float(size_range[1]),
-            float(height_range[0]), float(height_range[1]), float(edge_margin),
-            float(tile_size[0]), float(tile_size[1])
+            int(seed),
+            float(density),
+            float(size_range[0]),
+            float(size_range[1]),
+            float(height_range[0]),
+            float(height_range[1]),
+            float(edge_margin),
+            float(tile_size[0]),
+            float(tile_size[1]),
         )
     except ValueError as exc:
         raise ValueError(f"discrete_obstacles '{name}': {exc}") from exc

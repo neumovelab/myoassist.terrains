@@ -463,35 +463,7 @@ def _emit_uniform_hfield(
     """
     n = config.resolution
     half = config.extent / 2.0
-
-    if config.terrain == "random":
-        field = uniform_gen.generate_random_field(
-            nrow=n,
-            ncol=n,
-            half_x=half,
-            half_y=half,
-            amplitude=config.amplitude,
-            safe_radius=config.safe_zone_radius,
-            seed=config.seed,
-        )
-    else:  # 'sinusoidal'
-        field = uniform_gen.generate_sinusoidal_field(
-            nrow=n,
-            ncol=n,
-            half_x=half,
-            half_y=half,
-            amplitude=config.amplitude,
-            period=config.period,
-            safe_radius=config.safe_zone_radius,
-        )
-
-    dmin = float(field.min())
-    dmax = float(field.max())
-    relief = dmax - dmin
-    # A perfectly flat field (relief 0) would give a degenerate hfield; fall
-    # back to a nominal relief (the surface stays flat regardless).
-    if relief < 1e-9:
-        relief = max(config.amplitude, 1e-3)
+    field, dmin, relief = uniform_gen.elevation_field(config)
 
     hfield = spec.add_hfield(
         name=_UNIFORM_HFIELD_NAME,

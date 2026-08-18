@@ -190,9 +190,7 @@ def surface_height(
     along +y. So world `local_y = -half` corresponds to array row `nrow - 1`, not
     row 0 -- sampling it the other way round mirrors the whole tile.
     """
-    quantized = _heightmap_from_params(
-        {"vertical_relief": vertical_relief, "base_height": base_height, **params}
-    )
+    quantized = _heightmap_from_params({"vertical_relief": vertical_relief, "base_height": base_height, **params})
     origin, hmin, span = _hfield_placement(quantized, float(base_height), float(vertical_relief))
     value = _bilinear_sample(quantized, local_x, local_y, tile_size)
     return float(origin + vertical_relief * (value - hmin) / span)
