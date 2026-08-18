@@ -43,6 +43,49 @@ PARAM_RANGES: dict[str, tuple[float, float]] = {
     # base_height intentionally not randomized — see flat.py for the rationale.
 }
 
+PARAM_DOCS: dict[str, str] = {
+    "step_height": "Riser height per step.",
+    "step_width": "Radial tread depth; each level shrinks by this much per side.",
+    "n_steps": "Number of concentric steps.",
+    "outer_margin": "Flat band between the tile edge and the first step.",
+    "inverted": "If True, the steps descend into a central pit.",
+    "base_height": "z-coordinate of the tile's flat-edge base.",
+}
+
+SPEED_SCALE = 0.50
+
+
+def surface_height(
+    local_x: float,
+    local_y: float,
+    *,
+    tile_size: tuple[float, float],
+    step_height: float = 0.20,
+    step_width: float = 0.50,
+    n_steps: int = 5,
+    outer_margin: float = 0.5,
+    inverted: bool = False,
+    base_height: float = 0.0,
+    **_,
+) -> float:
+    """Walkable surface height at a tile-local (x, y).
+
+    Level *i* occupies the annulus whose distance from the tile edge is at least
+    `outer_margin + (i-1)*step_width`, so the level is
+    `floor((edge_dist - outer_margin) / step_width) + 1`, clamped to `n_steps`.
+    The flat outer margin is level 0: it must be tested before the `+ 1`, because
+    `int()` truncates toward zero and would otherwise promote the whole margin to
+    level 1.
+    """
+    edge_dist = min(tile_size[0] / 2.0 - abs(local_x), tile_size[1] / 2.0 - abs(local_y))
+    if edge_dist < outer_margin or step_width <= 0:
+        return float(base_height)
+    level = min(int(n_steps), int((edge_dist - outer_margin) // step_width) + 1)
+    excursion = level * float(step_height)
+    if inverted:
+        excursion = -excursion
+    return float(base_height + excursion)
+
 
 def emit(
     spec: mj.MjSpec,
@@ -58,8 +101,6 @@ def emit(
     outer_margin: float = 0.5,
     inverted: bool = False,
     base_height: float = 0.0,
-    output_dir=None,  # unused
-    terrain_name=None,  # unused
 ) -> TileEmitResult:
     if step_height <= 0 or step_width <= 0 or outer_margin < 0:
         raise ValueError("step_height and step_width must be positive; outer_margin >= 0")

@@ -57,11 +57,10 @@ PERIMETER_EXEMPT = {"gap"}
 # Every entry is a known defect with an owning finding id, and every marker is
 # strict: once the fix lands the test passes unexpectedly, pytest fails, and the
 # marker has to be removed. That keeps the fix/test mapping honest.
-PERIMETER_XFAIL = {
-    # M4 fixed: stairs auto-fill now reserves one tread of landing per end, and
-    # inverted stairs emits a four-sided base frame.
-    ("rough", False): "M5: MuJoCo renormalises the hfield PNG, shifting the taper's mid-value off base_height",
-}
+# Empty: M4 fixed the stairs perimeter (auto-fill reserves one tread of landing
+# per end; inverted emits a four-sided base frame) and M5 fixed rough's (the geom
+# origin now inverts MuJoCo's renormalization). Every tile meets the contract.
+PERIMETER_XFAIL: dict[tuple[str, bool], str] = {}
 HEIGHT_XFAIL = {
     ("stairs", False): "M1: missing +1 on the level, and dist measured from the tile edge not the stair span",
     ("stairs", True): "M1: same, mirrored",
