@@ -12,7 +12,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-
 _TERRAIN_CONFIG_FILENAME = "terrain_config.xml"
 _TERRAIN_LIBRARY_DIRNAME = "terrain"
 # Env var that overrides project-root discovery. Kept as MYOASSIST_TERRAINS_ROOT

@@ -31,10 +31,13 @@ import mediapy as media
 import mujoco
 import numpy as np
 
-from myoassist_terrains.config import load_config
-from myoassist_terrains.velocity_map import generate_velocity_map
-
+# Scene assembly is shared with render_ensemble rather than duplicated. Only the
+# arrow overlay comes straight from the package, since that is where it lives.
 import render_ensemble as RE
+
+from myoassist_terrains.config import load_config
+from myoassist_terrains.velocity_arrows import add_velocity_overlay
+from myoassist_terrains.velocity_map import generate_velocity_map
 
 
 def _build(config_path: Path, want_arrows: bool):
@@ -72,7 +75,7 @@ def _build(config_path: Path, want_arrows: bool):
             tile_speed_jitter=float(vm.get("tile_speed_jitter", 0.0)),
             tile_jitter_seed=int(vm.get("tile_jitter_seed", 0)),
         )
-        RE.add_velocity_overlay(
+        add_velocity_overlay(
             builder.worldbody_node,
             builder.asset_node,
             samples,

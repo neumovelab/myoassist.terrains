@@ -13,11 +13,10 @@ from typing import Iterable
 
 import numpy as np
 
-from myoassist_terrains.config import TerrainConfig, TileConfig, UniformTerrainConfig
 from myoassist_terrains.composer import compute_cell_layouts, resolve_tiles
+from myoassist_terrains.config import TerrainConfig, TileConfig, UniformTerrainConfig
 from myoassist_terrains.surface import TerrainSurface
 from myoassist_terrains.tiles import REGISTRY
-
 
 # Per-tile-type speed multipliers, derived from the registry rather than restated
 # here: each tile declares its own SPEED_SCALE, so a tile registered through
@@ -242,13 +241,8 @@ def _tile_direction_xy(
             return np.asarray([1.0, 0.0], dtype=float)
         return np.asarray([0.0, 1.0], dtype=float)
 
-    if tile.type == "pyramid_stairs":
-        direction = _radial_direction(tile, local_x, local_y, radial_mode)
-        norm = float(np.linalg.norm(direction))
-        if norm > 1e-9:
-            return direction / norm
-
-    if tile.type in {"rough", "discrete_obstacles", "stepping_stones", "boulders"}:
+    # Tiles with no single travel axis get a radial flow instead.
+    if tile.type in {"pyramid_stairs", "rough", "discrete_obstacles", "stepping_stones", "boulders"}:
         direction = _radial_direction(tile, local_x, local_y, radial_mode)
         norm = float(np.linalg.norm(direction))
         if norm > 1e-9:
@@ -343,7 +337,7 @@ def _local_surface_roughness(surface: TerrainSurface, x: float, y: float, z: flo
 
 def surface_height_at(
     config: TerrainConfig,
-    tiles: Iterable[TileConfig] | None,
+    tiles: Iterable[TileConfig] | None,  # noqa: ARG001 - kept for the published signature
     x: float,
     y: float,
 ) -> float:

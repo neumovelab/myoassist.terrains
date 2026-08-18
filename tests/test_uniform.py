@@ -24,7 +24,6 @@ from myoassist_terrains.config import (
     load_config,
 )
 
-
 PLANE = int(mujoco.mjtGeom.mjGEOM_PLANE)
 HFIELD = int(mujoco.mjtGeom.mjGEOM_HFIELD)
 

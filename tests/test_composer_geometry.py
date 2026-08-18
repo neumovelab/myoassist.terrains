@@ -11,10 +11,9 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 
+import mujoco
 import numpy as np
 import pytest
-
-import mujoco
 
 from myoassist_terrains import build_terrain
 from myoassist_terrains.composer import compute_cell_layouts, emit_xml_include, resolve_tiles
@@ -26,7 +25,6 @@ from myoassist_terrains.config import (
     TileConfig,
     config_from_dict,
 )
-
 
 # ---------------------------------------------------------------------------
 # Layout

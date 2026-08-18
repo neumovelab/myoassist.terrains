@@ -8,7 +8,6 @@ from myoassist_terrains.registry import lookup, register_tile
 from myoassist_terrains.tiles import REGISTRY
 from myoassist_terrains.tiles.base import TileEmitResult, TileImpl
 
-
 EXPECTED_BUILTIN_TILES = {
     "boulders",
     "discrete_obstacles",
@@ -83,8 +82,8 @@ def test_register_tile_supports_the_height_and_speed_hooks():
     Without these a registered tile built fine and then failed in the velocity
     map, which had no entry for it, and reported its base height as its surface.
     """
-    from myoassist_terrains.velocity_map import DEFAULT_SPEED_SCALE, estimate_surface_height
     from myoassist_terrains.config import TileConfig
+    from myoassist_terrains.velocity_map import DEFAULT_SPEED_SCALE, estimate_surface_height
 
     name = "_test_ramp_tile"
 

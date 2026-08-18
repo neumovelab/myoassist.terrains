@@ -20,7 +20,6 @@ import numpy as np
 
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 
-
 # Diverse-mode default; placeholder until a curated palette is provided.
 DEFAULT_RGBA: tuple[float, float, float, float] = (0.55, 0.45, 0.65, 1.0)  # muted purple
 

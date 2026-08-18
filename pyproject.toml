@@ -68,11 +68,23 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra --strict-markers"
 
-# Lint/format config -- mirrors assist_sim / myo_sim so tooling is consistent across repos.
+# Lint/format config. Line length and the E/F/W core match assist_sim and myo_sim so
+# tooling is consistent across the repos; `I` matches myo_sim, which already sorts
+# imports. `ARG` is on because four dead parameters survived review here -- one of
+# them, `rough`'s `asset_path_prefix`, looked like a control over the emitted asset
+# path and did nothing.
 [tool.ruff]
 line-length = 128
-extend-exclude = [".claude", "external"]
+extend-exclude = [".claude"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
+select = ["E", "F", "W", "I", "ARG"]
 ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["myoassist_terrains"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test doubles have to match the signature the registry calls them with, so their
+# unused parameters are the point rather than an oversight.
+"tests/*.py" = ["ARG001"]

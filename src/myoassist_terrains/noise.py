@@ -12,8 +12,6 @@ so feature heights stay readable when many features overlap.
 
 from __future__ import annotations
 
-from typing import Tuple
-
 import numpy as np
 from scipy.ndimage import gaussian_filter, zoom
 
@@ -28,7 +26,7 @@ def normalize(values: np.ndarray) -> np.ndarray:
 
 
 def fractal_noise(
-    shape: Tuple[int, int],
+    shape: tuple[int, int],
     base_res: float,
     octaves: int,
     persistence: float,
@@ -59,12 +57,13 @@ def fractal_noise(
     return accum / amplitude_sum
 
 
-def edge_taper(shape: Tuple[int, int], taper_frac: float) -> np.ndarray:
+def edge_taper(shape: tuple[int, int], taper_frac: float) -> np.ndarray:
     """Smoothstep falloff to 0 at the array boundary.
 
-    `taper_frac` is the fractional band width (of the shorter axis) over
-    which the mask transitions 0 -> 1. taper_frac=0 returns an all-ones
-    mask (no tapering).
+    `taper_frac` is a fraction of EACH axis independently, not of the shorter
+    one, so on a non-square array the band is physically wider along the longer
+    axis. Equivalent either way for the square arrays `rough` uses.
+    taper_frac=0 returns an all-ones mask (no tapering).
     """
     if taper_frac <= 0.0:
         return np.ones(shape, dtype=np.float32)
@@ -79,7 +78,7 @@ def edge_taper(shape: Tuple[int, int], taper_frac: float) -> np.ndarray:
 
 
 def generate_complex_terrain(
-    shape: Tuple[int, int] = (256, 256),
+    shape: tuple[int, int] = (256, 256),
     seed: int = 0,
     terrace_levels: int = 5,
     num_pits: int = 12,

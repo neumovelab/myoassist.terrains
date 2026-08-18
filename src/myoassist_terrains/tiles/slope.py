@@ -30,7 +30,6 @@ import mujoco as mj
 
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 
-
 # Diverse-mode default; placeholder until a curated palette is provided.
 DEFAULT_RGBA: tuple[float, float, float, float] = (0.40, 0.65, 0.40, 1.0)  # sage green
 
@@ -130,8 +129,6 @@ def emit(
     base_height: float = 0.0,
     cross_ratio: float = 0.90,
     inverted: bool = False,
-    output_dir=None,  # unused; accepted for uniform composer API
-    terrain_name=None,  # unused; accepted for uniform composer API
 ) -> TileEmitResult:
     if axis not in ("x", "y"):
         raise ValueError(f"slope.axis must be 'x' or 'y', got {axis!r}")

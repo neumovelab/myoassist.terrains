@@ -18,16 +18,14 @@ compiled model rather than against the code that produced it:
 
 from __future__ import annotations
 
+import mujoco
 import numpy as np
 import pytest
-
-import mujoco
 
 from myoassist_terrains import build_terrain
 from myoassist_terrains.config import BorderConfig, GridConfig, TerrainConfig, TileConfig
 from myoassist_terrains.tiles import REGISTRY
 from myoassist_terrains.velocity_map import estimate_surface_height
-
 
 TILE_SIZE = (8.0, 8.0)
 BASE_HEIGHT = 0.0

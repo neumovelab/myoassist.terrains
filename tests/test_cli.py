@@ -12,9 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 import mujoco
+import pytest
 
 from myoassist_terrains.cli import main
 from myoassist_terrains.paths import find_terrain_root

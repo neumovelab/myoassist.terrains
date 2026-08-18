@@ -24,7 +24,6 @@ from myoassist_terrains.config import (
 )
 from myoassist_terrains.tiles import REGISTRY
 
-
 # Per-tile overrides that keep this smoke test cheap (a coarse hfield) or give a
 # tile a shape worth compiling at the 4 m tile size used below.
 PER_TILE_PARAMS = {

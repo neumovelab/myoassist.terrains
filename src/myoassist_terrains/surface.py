@@ -29,7 +29,6 @@ from myoassist_terrains import uniform as uniform_gen
 from myoassist_terrains.config import TerrainConfig, TileConfig, UniformTerrainConfig
 from myoassist_terrains.tiles import REGISTRY
 
-
 __all__ = ["surface_height_at", "max_surface_height_in", "TerrainSurface"]
 
 

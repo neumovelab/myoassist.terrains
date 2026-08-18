@@ -14,7 +14,6 @@ import pytest
 from myoassist_terrains import build_terrain
 from myoassist_terrains.config import load_config
 
-
 CONFIGS_DIR = Path(__file__).resolve().parents[1] / "utils" / "configs"
 
 

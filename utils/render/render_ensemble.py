@@ -51,7 +51,7 @@ def _check_class_references(root: ET.Element, class_name: str) -> List[str]:
 
 
 def _deepcopy(elem: ET.Element) -> ET.Element:
-    """Efficient shorthand for deepcopy of an ElementTree element."""
+    """Shorthand for copy.deepcopy on an ElementTree element."""
     return copy.deepcopy(elem)
 
 

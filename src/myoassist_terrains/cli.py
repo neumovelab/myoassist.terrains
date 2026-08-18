@@ -26,7 +26,6 @@ from myoassist_terrains.paths import (
 )
 from myoassist_terrains.tiles import REGISTRY
 
-
 # ---------------------------------------------------------------------------
 # Build
 

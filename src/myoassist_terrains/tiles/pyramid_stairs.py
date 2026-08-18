@@ -22,7 +22,6 @@ import mujoco as mj
 
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 
-
 # Diverse-mode default; placeholder until a curated palette is provided.
 DEFAULT_RGBA: tuple[float, float, float, float] = (0.85, 0.70, 0.25, 1.0)  # yellow / ochre
 

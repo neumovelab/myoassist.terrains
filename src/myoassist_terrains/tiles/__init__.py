@@ -30,7 +30,6 @@ from myoassist_terrains.tiles import (
 )
 from myoassist_terrains.tiles.base import TileImpl
 
-
 # (module, extra TileImpl overrides). Everything else is read off the module.
 # spiral_stairs deferred to v2 (geometric complexity not justified for v1).
 _MODULES: tuple[tuple[ModuleType, dict], ...] = (

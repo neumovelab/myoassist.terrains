@@ -9,10 +9,9 @@ connector strips between cells -- which the previous implementation reported as
 
 from __future__ import annotations
 
+import mujoco
 import numpy as np
 import pytest
-
-import mujoco
 
 from myoassist_terrains import build_terrain, max_surface_height_in, surface_height_at
 from myoassist_terrains.config import (
@@ -23,7 +22,6 @@ from myoassist_terrains.config import (
     config_from_dict,
 )
 from myoassist_terrains.surface import TerrainSurface
-
 
 # mj_ray degenerates on heightfields when a probe lands exactly on a triangle
 # edge: it misses and reports the hfield's base plane instead of the surface.

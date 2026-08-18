@@ -48,7 +48,6 @@ from myoassist_terrains.registry import lookup
 from myoassist_terrains.tiles import REGISTRY
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 
-
 # Material name for uniform-mode geoms. Distinct from `terrain_mat` (the
 # user-tunable material in terrain_style.xml that legacy content uses) so
 # the generated spec can self-declare its own copy without needing to know
@@ -415,10 +414,10 @@ def _emit_uniform_plane(
 
     For `slope`, tilt the plane by `deg` about +y -- the axis perpendicular
     to the +x walking direction -- so the grade is constant and uphill in
-    +x. The quaternion is a rotation about +y by `-deg` (radians): this maps
-    the plane's local +z normal to (sin(deg), 0, cos(deg)), giving surface
-    height z = tan(deg) * x (rising in the walking direction) while keeping
-    the plane through the origin so the opening pose sits at z ~= 0.
+    +x. The quaternion is a rotation about +y by `-deg` (radians), which maps
+    the plane's local +z normal to (-sin(deg), 0, cos(deg)). The plane through
+    the origin with that normal is z = tan(deg) * x, rising in the walking
+    direction, and passing through the origin keeps the opening pose at z ~= 0.
     """
     quat = [1.0, 0.0, 0.0, 0.0]
     if config.terrain == "slope":
@@ -946,7 +945,6 @@ def _emit_flat_box(
     center_xyz: tuple[float, float, float],
     half_size: tuple[float, float, float],
     appearance: _Appearance,
-    geom_name: str | None = None,
 ) -> None:
     """Emit a static box geom directly on worldbody (no body wrapper)."""
     geom_kwargs: dict = {
@@ -960,7 +958,7 @@ def _emit_flat_box(
         geom_kwargs["material"] = appearance.material
     if appearance.rgba is not None:
         geom_kwargs["rgba"] = list(appearance.rgba)
-    spec.worldbody.add_geom(name=geom_name or name, **geom_kwargs)
+    spec.worldbody.add_geom(name=name, **geom_kwargs)
 
 
 def _match_heights(mode: str, heights: list[float]) -> float:

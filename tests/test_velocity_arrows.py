@@ -10,10 +10,9 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
+import mujoco
 import numpy as np
 import pytest
-
-import mujoco
 
 from myoassist_terrains.config import BorderConfig, GridConfig, TerrainConfig, TileConfig
 from myoassist_terrains.velocity_arrows import (

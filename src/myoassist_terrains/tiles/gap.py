@@ -22,7 +22,6 @@ import mujoco as mj
 
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 
-
 # Diverse-mode default; placeholder until a curated palette is provided.
 DEFAULT_RGBA: tuple[float, float, float, float] = (0.30, 0.30, 0.30, 1.0)  # dark slate
 
@@ -69,8 +68,6 @@ def emit(
     gap_width: float = 0.5,
     axis: str = "y",
     base_height: float = 0.0,
-    output_dir=None,
-    terrain_name=None,
 ) -> TileEmitResult:
     if axis not in ("x", "y"):
         raise ValueError(f"gap.axis must be 'x' or 'y' (got {axis!r})")
