@@ -27,6 +27,17 @@ PARAM_RANGES: dict[str, tuple[float, float]] = {
     # config.
 }
 
+PARAM_DOCS: dict[str, str] = {
+    "height": "Top face z-coordinate (offset above the grid plane).",
+}
+
+SPEED_SCALE = 1.00
+
+
+def surface_height(_local_x: float, _local_y: float, *, height: float = 0.0, **_) -> float:
+    """Walkable surface height. The whole tile top sits at `height`."""
+    return float(height)
+
 
 def emit(
     spec: mj.MjSpec,

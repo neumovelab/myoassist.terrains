@@ -58,8 +58,8 @@ PERIMETER_EXEMPT = {"gap"}
 # strict: once the fix lands the test passes unexpectedly, pytest fails, and the
 # marker has to be removed. That keeps the fix/test mapping honest.
 PERIMETER_XFAIL = {
-    ("stairs", False): "M4: auto step_width makes stair_span == tile length, so the first riser is flush with the edge",
-    ("stairs", True): "M4: inverted stairs emits only cross-axis base margins, so the long edges sit one riser down",
+    # M4 fixed: stairs auto-fill now reserves one tread of landing per end, and
+    # inverted stairs emits a four-sided base frame.
     ("rough", False): "M5: MuJoCo renormalises the hfield PNG, shifting the taper's mid-value off base_height",
 }
 HEIGHT_XFAIL = {

@@ -50,7 +50,69 @@ PARAM_RANGES: dict[str, tuple[float, float]] = {
     # base_height intentionally not randomized — see flat.py for the rationale.
 }
 
+PARAM_DOCS: dict[str, str] = {
+    "angle_deg": "Incline angle in degrees.",
+    "axis": "Axis the ramp rises along.",
+    "direction": "How the falling half is built. v1 supports 'mirror' only.",
+    "plateau_ratio": "Fraction of the tile length given to the flat peak.",
+    "cross_ratio": "Fraction of the perpendicular axis covered by the ramp; the remainder is flat base margin.",
+    "inverted": "If True, the ramps descend into a valley and rise back.",
+    "base_height": "z-coordinate of the tile's flat-edge base.",
+}
+
+SPEED_SCALE = 0.72
+
 _RAMP_THICKNESS = 0.1
+
+
+def _geometry(tile_size: tuple[float, float], axis: str, plateau_ratio: float, cross_ratio: float):
+    """Axis mapping and span arithmetic shared by `emit` and `surface_height`.
+
+    Returning this from one place is what keeps the emitted ramp and the reported
+    height from drifting apart.
+    """
+    long_idx, cross_idx = (1, 0) if axis == "y" else (0, 1)
+    long_total = tile_size[long_idx]
+    cross_total = tile_size[cross_idx]
+    plateau_long = plateau_ratio * long_total
+    ramp_long = (long_total - plateau_long) / 2
+    cross_half = cross_total * cross_ratio / 2
+    return long_idx, cross_idx, long_total, cross_total, plateau_long, ramp_long, cross_half
+
+
+def surface_height(
+    local_x: float,
+    local_y: float,
+    *,
+    tile_size: tuple[float, float],
+    angle_deg: float = 12.0,
+    axis: str = "y",
+    plateau_ratio: float = 0.10,
+    base_height: float = 0.0,
+    cross_ratio: float = 0.90,
+    inverted: bool = False,
+    **_,
+) -> float:
+    """Walkable surface height at a tile-local (x, y).
+
+    Outside the cross-axis active region the base slab is exposed, so the height
+    is `base_height`; inside it the surface follows ramp -> plateau -> ramp.
+    """
+    (long_idx, _cross_idx, long_total, _cross_total, plateau_long, ramp_long, cross_half) = _geometry(
+        tile_size, axis, plateau_ratio, cross_ratio
+    )
+    long_local = local_y if long_idx == 1 else local_x
+    cross_local = local_x if long_idx == 1 else local_y
+
+    if abs(cross_local) > cross_half:
+        return float(base_height)  # flat base margin beside the ramp
+
+    excursion = ramp_long * math.tan(math.radians(angle_deg))
+    if inverted:
+        excursion = -excursion
+    dist_from_edge = min(long_local + long_total / 2.0, long_total / 2.0 - long_local)
+    t = max(0.0, min(1.0, dist_from_edge / ramp_long)) if ramp_long > 0 else 0.0
+    return float(base_height + excursion * t)
 
 
 def emit(
@@ -89,14 +151,11 @@ def emit(
     if base_top_z <= BASELINE_Z:
         raise ValueError(f"slope '{name}': base top z={base_top_z:.3f} <= BASELINE_Z={BASELINE_Z:.3f}; increase base_height.")
 
-    long_idx, cross_idx = (1, 0) if axis == "y" else (0, 1)
-    long_total = tile_size[long_idx]
-    cross_total = tile_size[cross_idx]
+    (long_idx, cross_idx, long_total, cross_total, plateau_long, ramp_long, cross_half) = _geometry(
+        tile_size, axis, plateau_ratio, cross_ratio
+    )
 
     angle_rad = math.radians(angle_deg)
-
-    plateau_long = plateau_ratio * long_total
-    ramp_long = (long_total - plateau_long) / 2  # length of each ramp side along long axis
 
     if ramp_long <= 0.0:
         raise ValueError(
@@ -123,7 +182,6 @@ def emit(
         "contype": 1,
         "conaffinity": 1,
     }
-    cross_half = cross_total * cross_ratio / 2
     if material is not None:
         geom_kwargs["material"] = material
     if rgba is not None:
