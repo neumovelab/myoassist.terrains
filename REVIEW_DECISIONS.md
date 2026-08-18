@@ -4,7 +4,7 @@ Companion to `FRAMEWORK_REVIEW.md`. Records what was decided, why, and what it
 costs. Updated as each batch is settled. Supersessions are kept visible rather
 than edited away.
 
-Status: **all batches scoped. Ready to implement.**
+Status: **implemented.** See the implementation status at the end of this file.
 
 ---
 
@@ -477,3 +477,85 @@ Three decisions change emitted geometry: M4 (stairs treads −14.3%), M5
 (`rough` centered −27 mm), V3 (scatter positions inset). One changes asset
 filenames (N-X2). On implementation: rebuild the shipped configs, regenerate the
 affected renders, and record each in a `CHANGELOG` (which the repo lacks — V10).
+
+---
+
+## Implementation status
+
+All batches implemented. Status: **complete**, pending review of the two branches.
+
+- `myoassist.terrains` branch `review-1-remediation`, 11 commits off `main`.
+- `myoassist` branch `ctrl_optim-testing`, 1 commit (seating + compose cache).
+- `myoassist-web`: not written. Scoped in `WEBSITE_CHANGELIST.md`.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| Test count | 84 -> 183 (1 skipped: `gap`'s documented perimeter exception) |
+| Coverage | 84% overall; `cli.py` and `paths.py` 0% -> 100%; `velocity_arrows.py` 0% -> covered |
+| `ruff check` / `ruff format --check` | clean, with `I` and `ARG` newly enabled |
+| mujoco 3.3.3 / 3.4.0 / 3.11.0 | 183 passed on each |
+| Python 3.12 / 3.13 | 183 passed on each |
+| Shipped configs | all 13 build, compile, and keep their exact colours |
+| Documented render commands | both run from a clean clone |
+| Seating, 11 terrain types through `compose` | all settle; root moves <= 2 mm in the first 20 ms |
+| Compose cache, tiled terrain across 3 processes | loads on a warm cache (was a hard failure) |
+
+### Things that turned out differently from the plan
+
+Recorded because the decisions above were made on the earlier understanding.
+
+1. **The predicted seating speedup was wrong.** Asking the terrain for its height
+   instead of collision-probing was expected to be faster, since it drops a
+   broadphase pass over every terrain geom. The first implementation was 3-19x
+   *slower* (1219 ms against 64 ms on a single tile) because it queried every mesh
+   vertex. A two-stage narrow-then-refine brought it to parity (77.8 ms against
+   76.7 ms); both are dominated by the `from_xml_string` compile each performs
+   anyway. No speedup, no regression.
+
+2. **MuJoCo does not interpolate heightfield cells bilinearly.** It splits each cell
+   across the main diagonal. Found only because a residual error would not go away:
+   bilinear was off by up to 30 mm between nodes, main-diagonal triangle
+   interpolation is exact at 400/400 ray-cast probes, and the anti-diagonal is worse
+   than bilinear, which rules out coincidence. This mattered directly: the error set
+   how deep a model was seated. `hfield.py` now holds the sampler both heightfield
+   users go through.
+
+3. **Flipping a sample coordinate is not the same as flipping the grid.** `rough`
+   needs the PNG-to-hfield row inversion, and negating the row coordinate turns
+   MuJoCo's main diagonal into the anti-diagonal, so the wrong triangle was
+   interpolated. Flipping the grid once, then working in hfield coordinates, took the
+   residual from 39 mm to 0.000000 m.
+
+4. **Two test methodologies were wrong before the code was.** `mj_ray` degenerates on
+   heightfield triangle edges and reports the base plane instead of the surface, and
+   the first probe grid used the same offset on both axes, putting every point on the
+   `x == y` diagonal. Both would have been "fixed" by loosening tolerances to roughly
+   a full relief, which would have hidden real error. Probes are now nudged
+   differently per axis, and the tolerances are tight (1 mm for tiles, 1 um at
+   heightfield nodes, which is float32 storage noise).
+
+5. **`ARG` needed no per-file exemption for the tiles.** The plan assumed tile
+   `surface_height` functions would need one for their uniform signature. Declaring
+   only the parameters each tile uses and absorbing the rest with `**_` removed the
+   need, and exposed four genuinely dead `emit` parameters in the process.
+
+6. **The STE em-dash convention broke an XML file.** Replacing em dashes with `--`
+   is not what STE asks for (it wants plain punctuation), and `--` is illegal inside
+   an XML comment, which made `utils/style/terrain_style.xml` unparseable and broke
+   the render scripts that chain it. Fixed with a semicolon. A test guarding this was
+   drafted and then dropped as over-engineering for a self-inflicted problem.
+
+### Scope changes made during implementation
+
+- **`flat_smoke_test.json` spawns the model at a 4-way corner** where tiles differ by
+  0.5 m, so no placement both touches the ground and avoids interpenetration. The
+  seating correctly lifts to clear the step. That is a poor spawn point rather than a
+  defect, and changing the config was left out of this pass.
+- **`camera_convert.py` gained the reverse direction** rather than having its
+  documentation corrected. `docs/utilities.md` claimed the conversion was
+  bidirectional; implementing the missing half was smaller than the alternative and
+  made the claim true.
+- **`_make_tiled.py` was restructured** for the `__main__` guard, and verified to
+  regenerate `myoassist_tiled.json`'s tiles byte-identically.
