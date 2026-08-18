@@ -7,9 +7,8 @@ what triggers publication.
 
 ## Unreleased
 
-Remediation pass following a full framework review. Findings, measurements and the
-reasoning behind each decision are recorded in `FRAMEWORK_REVIEW.md` and
-`REVIEW_DECISIONS.md`.
+Remediation pass following a full framework review. Each entry below states what
+changed and, where it matters, the measurement behind it.
 
 ### Changed geometry
 
