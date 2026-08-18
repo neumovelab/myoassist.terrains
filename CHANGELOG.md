@@ -127,7 +127,9 @@ is worse than a crash.
 - A reversed float range in `param_ranges`. numpy silently samples `[hi, lo)`, so
   reversed bounds worked for floats while raising for ints.
 - A `terrain_name` that is not a bare filename, which wrote the generated XML
-  outside the terrain library.
+  outside the terrain library. Both `/` and `\` are rejected on every platform:
+  `pathlib` only treats a backslash as a separator on Windows, so leaning on it would
+  make the same config an error on Windows and legal on Linux.
 
 ### Internal
 

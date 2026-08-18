@@ -28,14 +28,19 @@ PALETTE_PRESETS = frozenset({"diverse", "uniform", "custom"})
 
 
 def _validate_terrain_name(name: str) -> None:
-    """`terrain_name` becomes a filename, so it has to be a bare one.
+    r"""`terrain_name` becomes a filename, so it has to be a bare one.
 
     Without this a name containing a separator or `..` writes the generated XML
     outside the terrain library, where `set-active` cannot find it again.
+
+    Both separators are rejected on every platform, deliberately. `Path` only treats
+    `\` as one on Windows, so relying on it would make `{"terrain_name": "a\b"}`
+    an error on Windows and a legal filename on Linux -- and a config is a shared
+    artifact that gets built on both.
     """
     if not name:
         raise ValueError("terrain_name is required and must be non-empty")
-    if name != Path(name).name or name in {".", ".."}:
+    if "/" in name or "\\" in name or name in {".", ".."} or name != Path(name).name:
         raise ValueError(
             f"terrain_name must be a bare file name (no path separators or '..'), got {name!r}; "
             f"it is used as the generated file name terrain/<terrain_name>.xml."

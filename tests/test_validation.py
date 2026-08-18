@@ -215,9 +215,18 @@ def test_reversed_float_range_is_rejected():
 # Output paths
 
 
-@pytest.mark.parametrize("name", ["../escaped", "sub/dir", "..", "a\\b"])
+@pytest.mark.parametrize(
+    "name",
+    ["../escaped", "sub/dir", "..", ".", "a\\b", "..\\up"],
+)
 def test_terrain_name_must_be_a_bare_filename(name):
-    """`terrain_name` becomes `terrain/<name>.xml`, so a separator escaped the library."""
+    """`terrain_name` becomes `terrain/<name>.xml`, so a separator escaped the library.
+
+    The backslash cases run on every platform on purpose. `Path` only treats a
+    backslash as a separator on Windows, so a check that leaned on it made these names
+    an error on Windows and legal on Linux, which is how this first failed in CI. A
+    config is a shared artifact and gets built on both.
+    """
     with pytest.raises(ValueError, match="bare file name"):
         config_from_dict(_grid(terrain_name=name))
 
