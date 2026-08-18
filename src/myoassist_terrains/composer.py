@@ -54,9 +54,15 @@ from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 # the generated spec can self-declare its own copy without needing to know
 # anything that lives in the chained include file.
 _UNIFORM_MATERIAL_NAME = "myoassist_mat_uniform"
-# Mirror the rgba of the style file's `terrain_mat` so uniform mode looks
-# the same as the legacy convention. If you retune terrain_mat's rgba in
-# terrain_style.xml, update this constant to match.
+# Default rgba for uniform-palette geoms. Override per config with
+# `palette: {"uniform": [r, g, b, a]}`.
+#
+# This used to be read out of the consuming project's `terrain_style.xml` at
+# build time. That was removed: the read only fired when `output_dir` was passed
+# AND a style file happened to sit one level above it, so the same config
+# produced different colours depending on how it was built, and it never fired
+# at all through myoassist's compose (which passes a temp assets dir). An
+# explicit `palette` entry states the colour where you can see it.
 _UNIFORM_RGBA: tuple[float, float, float, float] = (0.78, 0.78, 0.78, 1.0)
 _UNIFORM_SPECULAR = 0.5
 _UNIFORM_SHININESS = 0.5
@@ -108,39 +114,6 @@ class _Appearance:
 
 # ---------------------------------------------------------------------------
 # Public entry point
-
-
-def _read_uniform_rgba_from_style(
-    output_dir: Optional[Path],
-) -> tuple[float, float, float, float]:
-    """Read terrain_style.xml's `terrain_mat` rgba so uniform mode tracks
-    the user's manual edits to the style file.
-
-    The style file lives one level above `output_dir` (e.g. output_dir is
-    `<project>/terrain/`, style is `<project>/terrain_style.xml`). Returns
-    the constant default if the file or material can't be parsed.
-    """
-    if output_dir is None:
-        return _UNIFORM_RGBA
-    style_path = output_dir.parent / "terrain_style.xml"
-    if not style_path.exists():
-        return _UNIFORM_RGBA
-    try:
-        tree = ET.parse(style_path)
-        for mat in tree.iter("material"):
-            if mat.get("name") != "terrain_mat":
-                continue
-            rgba_str = mat.get("rgba", "").strip()
-            if not rgba_str:
-                continue
-            values = [float(v) for v in rgba_str.split()]
-            if len(values) >= 4:
-                return (values[0], values[1], values[2], values[3])
-            if len(values) == 3:
-                return (values[0], values[1], values[2], 1.0)
-    except (ET.ParseError, ValueError):
-        pass
-    return _UNIFORM_RGBA
 
 
 def _bind_uniform_texture(
@@ -289,8 +262,8 @@ def build_terrain(
 
     # Register palette materials in the generated spec so geoms can reference
     # them by name and pick up their reflectance / rgba properties.
-    uniform_rgba = _read_uniform_rgba_from_style(output_dir)
-    _register_palette_materials(spec, config, uniform_rgba, output_dir=output_dir)
+    uniform_rgba = _resolve_uniform_rgba(config)
+    _register_palette_materials(spec, config, output_dir=output_dir)
 
     layouts = compute_cell_layouts(config)
 
@@ -298,6 +271,7 @@ def build_terrain(
     # tiles for any cell not covered by an explicit entry (when a
     # randomization spec is supplied).
     resolved_tiles = resolve_tiles(config)
+    _validate_palette(config, {t.type for t in resolved_tiles})
 
     # Track per-cell base heights so connectors can match across cells.
     cell_results: dict[tuple[int, int], TileEmitResult] = {}
@@ -493,6 +467,14 @@ def _emit_uniform_hfield(
 # Layout
 
 
+def _placed_types(config: TerrainConfig) -> set[str]:
+    """Tile types this config can place: explicit plus randomization-eligible."""
+    types = {t.type for t in config.tiles}
+    if config.randomization is not None:
+        types |= {name for name, weight in config.randomization.weights.items() if weight > 0}
+    return types
+
+
 def resolve_tiles(config: TerrainConfig) -> list[TileConfig]:
     """Combine explicit `tiles` with sampled tiles for any uncovered cell.
 
@@ -572,7 +554,15 @@ def _sample_tile_params(
 
     # User overrides (numeric range, categorical list, or fixed via [v, v]).
     for param_name, spec in user_ranges.items():
-        params[param_name] = _sample_user_spec(rng, spec, type_name, param_name, params.get(param_name))
+        default_value = params.get(param_name)
+        if isinstance(default_value, (list, tuple)):
+            raise ValueError(
+                f"randomization.param_ranges[{type_name!r}][{param_name!r}]: {param_name} takes a "
+                f"list value ({default_value!r}), which cannot be randomized -- a [lo, hi] spec "
+                f"would be read as a range and replace it with one number. Set it directly in the "
+                f"tile's `params` instead."
+            )
+        params[param_name] = _sample_user_spec(rng, spec, type_name, param_name, default_value)
 
     return params
 
@@ -597,9 +587,11 @@ def _sample_categorical(rng: np.random.Generator, choices: list):
 
 def _sample_numeric(rng: np.random.Generator, lo: float, hi: float, default_value):
     """Sample a uniform value, returning int when the param's default is int."""
+    if hi < lo:
+        # np.random.uniform silently samples [hi, lo) when the bounds are swapped,
+        # so a reversed range used to work for floats but raise for ints.
+        raise ValueError(f"sample range hi ({hi}) < lo ({lo})")
     if isinstance(default_value, int) and not isinstance(default_value, bool):
-        if hi < lo:
-            raise ValueError(f"sample range hi ({hi}) < lo ({lo})")
         return int(rng.integers(int(lo), int(hi) + 1))
     return float(rng.uniform(float(lo), float(hi)))
 
@@ -636,6 +628,48 @@ def compute_cell_layouts(config: TerrainConfig) -> dict[tuple[int, int], CellLay
 # Palette / appearance
 
 
+def _resolve_uniform_rgba(config: TerrainConfig) -> tuple[float, float, float, float]:
+    """The single colour used by `palette_preset="uniform"`.
+
+    `palette` may carry one global override under `"uniform"` or `"terrain"`, which
+    matches how the uniform-*terrain* path reads it. A per-tile-type entry cannot
+    apply to a single shared colour, so it is rejected rather than silently
+    dropped, which is what used to happen.
+    """
+    if config.palette_preset != "uniform":
+        return _UNIFORM_RGBA
+    per_type = sorted(k for k in config.palette if k not in {"uniform", "terrain"})
+    if per_type:
+        noun = "entry" if len(per_type) == 1 else "entries"
+        raise ValueError(
+            f"palette_preset='uniform' paints every tile one colour, so the per-type "
+            f"palette {noun} {per_type} cannot apply. Use palette={{'uniform': [r, g, b, a]}} "
+            f"for the shared colour, or palette_preset='diverse'/'custom' for per-type colours."
+        )
+    for key in ("uniform", "terrain"):
+        if key in config.palette:
+            o = config.palette[key]
+            return (float(o[0]), float(o[1]), float(o[2]), float(o[3]))
+    return _UNIFORM_RGBA
+
+
+def _validate_palette(config: TerrainConfig, placed_types: set[str]) -> None:
+    """`custom` means the config supplies every colour; `diverse` means defaults.
+
+    Without this the two presets were byte-identical, so `custom` was a value that
+    only looked meaningful.
+    """
+    if config.palette_preset != "custom":
+        return
+    missing = sorted(placed_types - set(config.palette))
+    if missing:
+        raise ValueError(
+            f"palette_preset='custom' requires a palette entry for every placed tile type; "
+            f"missing {missing}. Add them to `palette`, or use palette_preset='diverse' to "
+            f"take each tile's default colour."
+        )
+
+
 def _palette_material_name(type_name: str) -> str:
     return f"{_PALETTE_MATERIAL_PREFIX}{type_name}"
 
@@ -658,16 +692,21 @@ def _safe_rgba(rgba: tuple[float, float, float, float]) -> tuple[float, float, f
 def _register_palette_materials(
     spec: mj.MjSpec,
     config: TerrainConfig,
-    uniform_rgba: tuple[float, float, float, float] = _UNIFORM_RGBA,
     output_dir: Optional[Path] = None,
 ) -> None:
     """For diverse/custom modes, declare a per-tile-type material in the spec
     so geoms can reference it. Each material carries that tile's rgba (with
     user palette overrides) and specular/shininess from its TileImpl record.
-    In uniform mode, register a single shared material whose rgba is read
-    from the user's terrain_style.xml so manual edits to the style file flow
-    through to generated terrains automatically.
+    In uniform mode, register a single shared material; the colour itself is set
+    per geom (see `_resolve_uniform_rgba`). Only tile types this config can place
+    get a material, rather than every type in the registry.
     """
+    if config.texture is not None and config.palette_preset != "uniform":
+        raise ValueError(
+            f"A `texture` block only applies to palette_preset='uniform' (got "
+            f"{config.palette_preset!r}), where one shared material carries it. It used to be "
+            f"discarded silently, along with any typo in `texture.file`."
+        )
     if config.palette_preset == "uniform":
         # Important: the material's rgba is intentionally a SENTINEL (white)
         # different from any color we'd actually use on geoms. MjSpec.to_xml()
@@ -691,7 +730,8 @@ def _register_palette_materials(
     # collapse matching geom rgbas during XML emission. Each geom carries
     # its actual color via its own rgba attribute, while the material
     # provides specular/shininess. See the uniform-mode comment for context.
-    for type_name, impl in REGISTRY.items():
+    for type_name in sorted(_placed_types(config)):
+        impl = REGISTRY[type_name]
         spec.add_material(
             name=_palette_material_name(type_name),
             rgba=[1.0, 1.0, 1.0, 1.0],

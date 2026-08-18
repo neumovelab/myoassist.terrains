@@ -13,7 +13,7 @@ from typing import Iterable
 
 import numpy as np
 
-from myoassist_terrains.config import TerrainConfig, TileConfig
+from myoassist_terrains.config import TerrainConfig, TileConfig, UniformTerrainConfig
 from myoassist_terrains.composer import compute_cell_layouts, resolve_tiles
 from myoassist_terrains.surface import TerrainSurface
 from myoassist_terrains.tiles import REGISTRY
@@ -57,18 +57,33 @@ def generate_velocity_map(
     in [1 - jitter, 1 + jitter], keyed by (row, col) and `tile_jitter_seed`, so
     even identical-type tiles get distinct speeds/colours. 0 disables it.
     """
-    assert samples_per_tile >= 1
-    assert base_speed > 0.0
-    assert height_offset >= 0.0
-    assert mode in {"goal", "tile"}
-    assert tile_radial_mode in {"inward", "outward", "mixed"}
-    assert 0.0 <= tile_speed_jitter < 1.0
+    # Raised, not asserted: `python -O` strips asserts, and these validate
+    # caller input, including the spelling of `mode` and `tile_radial_mode`.
+    if isinstance(config, UniformTerrainConfig):
+        raise ValueError(
+            "generate_velocity_map needs the grid/tile config form; a uniform terrain has no "
+            "cells to sample over. Use myoassist_terrains.surface_height_at for point queries "
+            "on a uniform surface."
+        )
+    if samples_per_tile < 1:
+        raise ValueError(f"samples_per_tile must be >= 1, got {samples_per_tile}")
+    if base_speed <= 0.0:
+        raise ValueError(f"base_speed must be > 0, got {base_speed}")
+    if height_offset < 0.0:
+        raise ValueError(f"height_offset must be >= 0, got {height_offset}")
+    if mode not in {"goal", "tile"}:
+        raise ValueError(f"mode must be 'goal' or 'tile', got {mode!r}")
+    if tile_radial_mode not in {"inward", "outward", "mixed"}:
+        raise ValueError(f"tile_radial_mode must be 'inward', 'outward' or 'mixed', got {tile_radial_mode!r}")
+    if not (0.0 <= tile_speed_jitter < 1.0):
+        raise ValueError(f"tile_speed_jitter must be in [0, 1), got {tile_speed_jitter}")
 
     start_v = np.asarray(start, dtype=float)
     goal_v = np.asarray(goal, dtype=float)
-    assert start_v.shape == (3,)
-    assert goal_v.shape == (3,)
-    assert np.linalg.norm(goal_v[:2] - start_v[:2]) > 1e-9
+    if start_v.shape != (3,) or goal_v.shape != (3,):
+        raise ValueError(f"start and goal must be 3-vectors, got {start_v.shape} and {goal_v.shape}")
+    if float(np.linalg.norm(goal_v[:2] - start_v[:2])) <= 1e-9:
+        raise ValueError("start and goal must differ horizontally to define a direction")
 
     scales = dict(DEFAULT_SPEED_SCALE)
     if speed_scale is not None:
@@ -87,9 +102,13 @@ def generate_velocity_map(
     out: list[VelocitySample] = []
 
     for tile in tiles:
-        assert tile.type in REGISTRY
-        scale = scales.get(tile.type)
-        assert scale is not None, f"missing speed scale for tile type {tile.type!r}"
+        if tile.type not in scales:
+            raise ValueError(
+                f"no speed scale for tile type {tile.type!r}. A tile registered through "
+                f"register_tile(..., speed_scale=...) supplies its own; otherwise pass "
+                f"speed_scale={{{tile.type!r}: <multiplier>}} here."
+            )
+        scale = scales[tile.type]
         layout = layouts[(tile.row, tile.col)]
         jitter = _tile_speed_jitter(tile.row, tile.col, tile_speed_jitter, tile_jitter_seed)
 
@@ -163,6 +182,14 @@ def _tile_speed_jitter(row: int, col: int, amplitude: float, seed: int) -> float
 
 
 def _sample_offsets(length: float, count: int) -> np.ndarray:
+    """Sample offsets across one tile axis, inset from the edges.
+
+    A single sample belongs at the tile centre. `np.linspace(a, b, 1)` returns
+    the low endpoint, so the count==1 case used to place its one sample 32% of
+    the tile away from the centre.
+    """
+    if count == 1:
+        return np.zeros(1)
     margin = 0.18 * length / max(count, 1)
     return np.linspace(-length / 2 + margin, length / 2 - margin, count)
 
@@ -182,7 +209,7 @@ def _direction_and_grade(
     z: float,
     direction_xy: np.ndarray,
 ) -> tuple[np.ndarray, float]:
-    assert direction_xy.shape == (2,)
+    assert direction_xy.shape == (2,)  # internal invariant: built by this module
     norm_xy = float(np.linalg.norm(direction_xy))
     if norm_xy < 1e-9:
         return np.asarray([0.0, 0.0, 0.0]), 0.0
@@ -193,7 +220,7 @@ def _direction_and_grade(
     probe_z = surface.height_at(float(probe_xy[0]), float(probe_xy[1]))
     direction = np.asarray([step_xy[0], step_xy[1], probe_z - z], dtype=float)
     norm = float(np.linalg.norm(direction))
-    assert norm > 1e-12
+    assert norm > 1e-12  # internal invariant: step_xy is a unit vector
     grade = abs(float(probe_z - z)) / probe_distance
     return direction / norm, grade
 
@@ -236,7 +263,7 @@ def _radial_direction(
     local_y: float,
     radial_mode: str,
 ) -> np.ndarray:
-    assert radial_mode in {"inward", "outward", "mixed"}
+    assert radial_mode in {"inward", "outward", "mixed"}  # validated by the caller
     outward = np.asarray([local_x, local_y], dtype=float)
     if radial_mode == "outward":
         return outward
@@ -251,7 +278,7 @@ def _radial_direction(
 
 def _grade_speed_scale(grade: float) -> float:
     """Slow down as surface grade increases along the travel direction."""
-    assert grade >= 0.0
+    assert grade >= 0.0  # internal invariant: computed as an absolute value
     return max(0.32, 1.0 / (1.0 + 2.6 * grade))
 
 

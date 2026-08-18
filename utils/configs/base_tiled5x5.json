@@ -13,6 +13,14 @@
     "match_mode": "min"
   },
   "palette_preset": "uniform",
+  "palette": {
+    "uniform": [
+      0.792,
+      0.996,
+      1.0,
+      1.0
+    ]
+  },
   "tiles": [
     {
       "row": 3,

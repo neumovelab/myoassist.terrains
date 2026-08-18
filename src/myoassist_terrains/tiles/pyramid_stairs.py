@@ -106,6 +106,21 @@ def emit(
         raise ValueError("step_height and step_width must be positive; outer_margin >= 0")
     if n_steps < 1:
         raise ValueError(f"pyramid_stairs.n_steps must be >= 1 (got {n_steps})")
+    # The inverted form emits its base as a four-sided frame of thickness
+    # `outer_margin` spanning the inner footprint, so both a zero margin and a
+    # margin that consumes the tile give zero-extent walls. MuJoCo then rejects
+    # the model with "size 1 must be positive in geom", which names neither the
+    # tile nor the parameter.
+    if inverted and outer_margin <= 0:
+        raise ValueError(
+            f"pyramid_stairs.outer_margin must be > 0 when inverted=True (got {outer_margin}); "
+            f"the base frame around the pit has that thickness."
+        )
+    if outer_margin >= min(tile_size) / 2:
+        raise ValueError(
+            f"pyramid_stairs.outer_margin ({outer_margin}) must be less than half the smaller "
+            f"tile dimension ({min(tile_size) / 2}); it leaves no room for the pyramid."
+        )
 
     base_top_z = origin_xyz[2] + base_height
     if base_top_z <= BASELINE_Z:

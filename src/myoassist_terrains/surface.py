@@ -98,6 +98,14 @@ class TerrainSurface:
         self._layouts = compute_cell_layouts(cfg)
         self._tiles = {(t.row, t.col): t for t in resolve_tiles(cfg)}
         self._base = {rc: cell_base_height(t) for rc, t in self._tiles.items()}
+        # Merge each tile's params once. Doing it per query cost more than the
+        # height evaluation itself: seating a model asks hundreds of questions.
+        self._call: dict[tuple[int, int], tuple] = {}
+        for rc, tile in self._tiles.items():
+            impl = REGISTRY[tile.type]
+            params = dict(impl.default_params)
+            params.update(tile.params)
+            self._call[rc] = (impl.surface_height_fn, params)
         self._tw, self._tl = cfg.grid.tile_size
         pitch = cfg.border.width
         self._pitch_x = self._tw + pitch
@@ -117,18 +125,14 @@ class TerrainSurface:
             return 0.0
 
         if kind_x == "in" and kind_y == "in":
-            tile = self._tiles.get((iy, ix))
-            if tile is None:
+            call = self._call.get((iy, ix))
+            if call is None:
                 return 0.0
+            height_fn, params = call
+            if height_fn is None:
+                return self._base[(iy, ix)]
             layout = self._layouts[(iy, ix)]
-            impl = REGISTRY[tile.type]
-            params = dict(impl.default_params)
-            params.update(tile.params)
-            if impl.surface_height_fn is None:
-                return cell_base_height(tile)
-            return float(
-                impl.surface_height_fn(x - layout.center_x, y - layout.center_y, tile_size=(self._tw, self._tl), **params)
-            )
+            return float(height_fn(x - layout.center_x, y - layout.center_y, tile_size=(self._tw, self._tl), **params))
 
         # In a connector strip: its top face is match_mode over the cells it
         # joins, exactly as the composer emits it. Reporting 0.0 here (as the
