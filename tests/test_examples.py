@@ -19,9 +19,16 @@ CONFIGS_DIR = Path(__file__).resolve().parents[1] / "utils" / "configs"
 
 
 def _config_paths() -> list[Path]:
-    if not CONFIGS_DIR.exists():
-        return []
-    return sorted(CONFIGS_DIR.glob("*.json"))
+    """Every shipped config.
+
+    Deliberately NOT tolerant of a missing directory: an empty `parametrize` list
+    collects zero tests and reports success, so this file could silently stop
+    checking anything at all if the configs moved.
+    """
+    assert CONFIGS_DIR.is_dir(), f"shipped configs not found at {CONFIGS_DIR}"
+    paths = sorted(CONFIGS_DIR.glob("*.json"))
+    assert paths, f"no shipped configs found in {CONFIGS_DIR}"
+    return paths
 
 
 @pytest.mark.parametrize("config_path", _config_paths(), ids=lambda p: p.name)

@@ -5,15 +5,28 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Callable so `publish.yml` can require this workflow as a release gate rather
+  # than duplicating its steps (and drifting from them).
+  workflow_call:
 
 jobs:
   pytest:
-    name: pytest (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: pytest (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # Covers everything `requires-python = ">=3.10"` admits, so the classifier
+        # list is a claim CI actually checks. 3.13 was verified locally first
+        # (84 tests passing, with mujoco 3.11) before being declared.
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        include:
+          # One Windows leg. The package carries three `.replace("\\", "/")` path
+          # workarounds that exist only for Windows and were never exercised on it,
+          # on the platform this repo is primarily developed on.
+          - os: windows-latest
+            python-version: "3.12"
 
     steps:
       - uses: actions/checkout@v4
@@ -33,18 +46,21 @@ jobs:
         run: ruff check . && ruff format --check .
 
       - name: Run tests
-        run: pytest -q
+        run: pytest -q --cov=myoassist_terrains --cov-report=term-missing
 
       - name: Verify package builds cleanly
-        if: matrix.python-version == '3.12'
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: |
           pip install build
-          python -m build --wheel
+          python -m build
           python -c "
-          import glob, zipfile
+          import glob, tarfile, zipfile
           whl = glob.glob('dist/myoassist_terrains-*.whl')[0]
           with zipfile.ZipFile(whl) as z:
               names = z.namelist()
           assert any(n.endswith('.py') for n in names), 'no python modules in wheel'
-          print(f'Wheel OK: {len(names)} files')
+          sdist = glob.glob('dist/myoassist_terrains-*.tar.gz')[0]
+          with tarfile.open(sdist) as t:
+              assert any(n.endswith('pyproject.toml') for n in t.getnames()), 'sdist has no pyproject'
+          print(f'Wheel OK: {len(names)} files; sdist OK')
           "

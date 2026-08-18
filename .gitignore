@@ -228,7 +228,13 @@ utils/render/myoassist_dephy_smoke_config.json
 utils/render/26muscle_3D
 utils/render/mesh
 utils/render/terrain_config.xml
-utils/render/myoassist_ensemble_terrain_assets
-utils/render/myoassist_ensemble_tiled_terrain_assets
+# Generated terrain assets. The render scripts derive the directory name from the
+# config's `scene_name`, so this has to be a glob: two hard-coded names meant any
+# other scene left an untracked directory behind, which the documented
+# render_terrain_check.py command did.
+utils/render/*_terrain_assets/
+# render_terrain_check.py writes its scene beside the config (relative asset paths
+# need that) and unlinks it; a kill in between leaves one behind.
+utils/render/tmp*.xml
 utils/render/myoassist_ensemble_config.json
 utils/render/myoassist_ensemble_tiled_config.json

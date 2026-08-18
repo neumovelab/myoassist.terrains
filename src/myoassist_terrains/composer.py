@@ -234,6 +234,7 @@ def _tile_call_params(impl, tile_cfg, output_dir, terrain_name: str) -> dict:
 def build_terrain(
     config: TerrainConfig | UniformTerrainConfig,
     output_dir: Optional[Path] = None,
+    prune_assets: bool = False,
 ) -> mj.MjSpec:
     """Build a MuJoCo MjSpec from a terrain config and return it.
 
@@ -249,6 +250,13 @@ def build_terrain(
     (its heightfield data is baked into the spec, not written to disk).
     `output_dir` is still used to resolve an optional `texture` in either
     form.
+
+    `prune_assets` deletes heightmap PNGs in `output_dir` that belong to this
+    terrain name but were superseded by this build. Off by default and deliberately
+    opt-in: asset names are content-addressed, so re-tuning a `rough` tile leaves
+    the old file behind, which is right for a project's terrain library (the CLI
+    passes True) and wrong for a shared cache directory, where another cached model
+    may still reference it.
 
     Caller is responsible for either compiling (`spec.compile()`) or writing
     the XML (`emit_xml_include(spec)` for the include-friendly form).
@@ -307,9 +315,25 @@ def build_terrain(
     #    (b) catches anything that falls through gaps or below tile bases.
     #    Rendered fully transparent (rgba alpha=0) since it's purely a
     #    contact-resolution surface.
-    _emit_terrain_floor(spec, config, cell_results)
+    _emit_terrain_floor(spec, config)
+
+    if prune_assets and output_dir is not None:
+        _prune_superseded_assets(spec, config.terrain_name, output_dir)
 
     return spec
+
+
+def _prune_superseded_assets(spec: mj.MjSpec, terrain_name: str, output_dir: Path) -> None:
+    """Delete this terrain's heightmap PNGs that the current build does not use.
+
+    Only files matching `<terrain_name>_*.png` are considered, and only ones the
+    spec no longer references, so another terrain's assets in the same library are
+    never touched.
+    """
+    in_use = {Path(hf.file).name for hf in spec.hfields if getattr(hf, "file", "")}
+    for stale in output_dir.glob(f"{terrain_name}_*.png"):
+        if stale.name not in in_use:
+            stale.unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -884,12 +908,8 @@ def _emit_corner_connectors(
             )
 
 
-def _emit_terrain_floor(
-    spec: mj.MjSpec,
-    config: TerrainConfig,
-    cell_results: dict[tuple[int, int], TileEmitResult],
-) -> None:
-    """Emit the contract `terrain` geom -- an invisible backstop plane.
+def _emit_terrain_floor(spec: mj.MjSpec, config: TerrainConfig) -> None:
+    """Emit the contract `terrain` geom -- an invisible backstop box.
 
     Purpose is purely contact-resolution: model XMLs that declare
     `<contact><pair geom1="terrain" .../>` need a geom by that exact name to

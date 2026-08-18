@@ -20,7 +20,7 @@ from myoassist_terrains.composer import emit_xml_include
 from myoassist_terrains.config import (
     TerrainConfig,
     UniformTerrainConfig,
-    _config_from_dict,
+    config_from_dict,
     load_config,
 )
 
@@ -58,7 +58,7 @@ def _hfield_physical(model: mujoco.MjModel):
 
 
 def test_flat_dict_parses_to_uniform_config():
-    cfg = _config_from_dict({"terrain": "flat"})
+    cfg = config_from_dict({"terrain": "flat"})
     assert isinstance(cfg, UniformTerrainConfig)
     assert cfg.terrain == "flat"
     assert cfg.terrain_name == "uniform_flat"  # derived default
@@ -66,23 +66,23 @@ def test_flat_dict_parses_to_uniform_config():
 
 
 def test_slope_dict_parses_deg():
-    cfg = _config_from_dict({"terrain": "slope", "deg": 10})
+    cfg = config_from_dict({"terrain": "slope", "deg": 10})
     assert isinstance(cfg, UniformTerrainConfig)
     assert cfg.deg == pytest.approx(10.0)
 
 
 def test_random_and_sinusoidal_dicts_parse():
-    r = _config_from_dict({"terrain": "random", "amplitude": 0.1})
+    r = config_from_dict({"terrain": "random", "amplitude": 0.1})
     assert r.terrain == "random"
     assert r.amplitude == pytest.approx(0.1)
-    s = _config_from_dict({"terrain": "sinusoidal", "amplitude": 0.05, "period": 1.0})
+    s = config_from_dict({"terrain": "sinusoidal", "amplitude": 0.05, "period": 1.0})
     assert s.terrain == "sinusoidal"
     assert s.amplitude == pytest.approx(0.05)
     assert s.period == pytest.approx(1.0)
 
 
 def test_grid_form_still_dispatches_to_terrain_config():
-    cfg = _config_from_dict(
+    cfg = config_from_dict(
         {
             "terrain_name": "g",
             "grid": {"rows": 1, "cols": 1, "tile_size": [1.0, 1.0]},
@@ -137,7 +137,7 @@ def test_load_config_uniform_roundtrip(tmp_path: Path):
 
 
 def test_flat_builds_single_plane():
-    spec = build_terrain(_config_from_dict({"terrain": "flat"}))
+    spec = build_terrain(config_from_dict({"terrain": "flat"}))
     model = spec.compile()
     assert isinstance(model, mujoco.MjModel)
     assert model.ngeom == 1
@@ -145,7 +145,7 @@ def test_flat_builds_single_plane():
 
 
 def test_slope_builds_single_plane_tilted_10deg():
-    spec = build_terrain(_config_from_dict({"terrain": "slope", "deg": 10}))
+    spec = build_terrain(config_from_dict({"terrain": "slope", "deg": 10}))
     model = spec.compile()
     assert model.ngeom == 1
     assert _geom_type_counts(model) == {PLANE: 1}
@@ -161,7 +161,7 @@ def test_slope_builds_single_plane_tilted_10deg():
 
 
 def test_flat_plane_passes_through_origin():
-    spec = build_terrain(_config_from_dict({"terrain": "flat"}))
+    spec = build_terrain(config_from_dict({"terrain": "flat"}))
     model = spec.compile()
     assert model.geom("terrain").pos[2] == pytest.approx(0.0)
 
@@ -170,7 +170,7 @@ def test_flat_matches_legacy_matfloor_styling():
     """The default flat plane reproduces the legacy `matfloor` look: an
     infinite plane (size 0 0 0.05), a textured low-reflectance material, and a
     horizon haze matching the ground color."""
-    model = build_terrain(_config_from_dict({"terrain": "flat"})).compile()
+    model = build_terrain(config_from_dict({"terrain": "flat"})).compile()
     # infinite plane (half_x = half_y = 0), 0.05 render grid spacing
     assert list(model.geom("terrain").size) == pytest.approx([0.0, 0.0, 0.05])
     # matfloor material: textured + low reflectance
@@ -187,7 +187,7 @@ def test_flat_matches_legacy_matfloor_styling():
 
 
 def test_random_builds_single_hfield_within_amplitude():
-    cfg = _config_from_dict({"terrain": "random", "amplitude": 0.1})
+    cfg = config_from_dict({"terrain": "random", "amplitude": 0.1})
     model = build_terrain(cfg).compile()
     assert model.ngeom == 1
     assert _geom_type_counts(model) == {HFIELD: 1}
@@ -205,7 +205,7 @@ def test_random_builds_single_hfield_within_amplitude():
 
 
 def test_sinusoidal_builds_hfield_with_expected_amplitude_and_safe_zone():
-    cfg = _config_from_dict({"terrain": "sinusoidal", "amplitude": 0.05, "period": 1.0})
+    cfg = config_from_dict({"terrain": "sinusoidal", "amplitude": 0.05, "period": 1.0})
     model = build_terrain(cfg).compile()
     assert model.ngeom == 1
     assert _geom_type_counts(model) == {HFIELD: 1}
@@ -220,7 +220,7 @@ def test_sinusoidal_builds_hfield_with_expected_amplitude_and_safe_zone():
 
 
 def test_safe_zone_disabled_when_radius_zero():
-    cfg = _config_from_dict(
+    cfg = config_from_dict(
         {
             "terrain": "sinusoidal",
             "amplitude": 0.05,
@@ -240,7 +240,7 @@ def test_safe_zone_disabled_when_radius_zero():
 
 
 def test_uniform_hfield_emits_mujocoinclude_with_elevation():
-    cfg = _config_from_dict({"terrain": "random", "amplitude": 0.1})
+    cfg = config_from_dict({"terrain": "random", "amplitude": 0.1})
     xml = emit_xml_include(build_terrain(cfg))
     assert xml.startswith("<mujocoinclude")
     assert "<hfield" in xml
@@ -249,13 +249,13 @@ def test_uniform_hfield_emits_mujocoinclude_with_elevation():
 
 
 def test_uniform_uses_shared_material():
-    cfg = _config_from_dict({"terrain": "flat"})
+    cfg = config_from_dict({"terrain": "flat"})
     xml = emit_xml_include(build_terrain(cfg))
     assert "myoassist_mat_uniform" in xml
 
 
 def test_uniform_palette_override_sets_rgba():
-    cfg = _config_from_dict({"terrain": "flat", "palette": {"terrain": [0.1, 0.2, 0.3, 1.0]}})
+    cfg = config_from_dict({"terrain": "flat", "palette": {"terrain": [0.1, 0.2, 0.3, 1.0]}})
     model = build_terrain(cfg).compile()
     rgba = model.geom("terrain").rgba
     assert rgba[0] == pytest.approx(0.1)
@@ -270,7 +270,7 @@ def test_uniform_texture_binds(tmp_path: Path):
     library.mkdir(parents=True)
     PIL.new("RGB", (8, 8), color=(128, 128, 128)).save(project_root / "tex.png")
 
-    cfg = _config_from_dict({"terrain": "flat", "texture": {"file": "tex.png", "name": "my_tex"}})
+    cfg = config_from_dict({"terrain": "flat", "texture": {"file": "tex.png", "name": "my_tex"}})
     xml = emit_xml_include(build_terrain(cfg, output_dir=library))
     assert 'name="my_tex"' in xml
     assert 'texture="my_tex"' in xml

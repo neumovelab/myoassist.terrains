@@ -125,19 +125,21 @@ def test_rough_tile_emits_hfield_asset(tmp_path: Path):
 
 
 def test_randomization_fills_uncovered_cells():
+    from myoassist_terrains.config import RandomizationSpec
+
+    # Explicit tiles and randomization coexist, so both can be passed to the
+    # constructor. (This used to attach `randomization` after construction with a
+    # comment about avoiding the "tiles OR randomization" guard -- that guard only
+    # fires when `tiles` is empty, so the workaround was unnecessary and it skipped
+    # __post_init__ validation.)
     cfg = TerrainConfig(
         terrain_name="r",
         grid=GridConfig(rows=2, cols=2, tile_size=(1.0, 1.0)),
         border=BorderConfig(width=0.0),
         palette_preset="diverse",
         tiles=[TileConfig(row=0, col=0, type="flat")],
-        randomization=None,
+        randomization=RandomizationSpec(seed=1, weights={"flat": 1.0}),
     )
-    # Manually attach a randomization spec so we don't trigger the
-    # "must have tiles OR randomization" guard separately.
-    from myoassist_terrains.config import RandomizationSpec
-
-    cfg.randomization = RandomizationSpec(seed=1, weights={"flat": 1.0})
     spec = build_terrain(cfg)
     model = spec.compile()
     # 4 cells * (base flat geom) + transparent backstop, plus no connectors.

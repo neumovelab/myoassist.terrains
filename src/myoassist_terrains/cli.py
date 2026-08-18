@@ -49,7 +49,9 @@ def cmd_build(args: argparse.Namespace) -> int:
     library = terrain_library_dir(root)
     library.mkdir(parents=True, exist_ok=True)
 
-    spec = build_terrain(config, output_dir=library)
+    # The library is this project's own, so superseded heightmaps from an
+    # earlier build of the same terrain are safe to remove.
+    spec = build_terrain(config, output_dir=library, prune_assets=True)
     xml = emit_xml_include(spec)
 
     out_path = library / f"{config.terrain_name}.xml"
