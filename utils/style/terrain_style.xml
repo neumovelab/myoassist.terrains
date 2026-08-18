@@ -16,7 +16,7 @@
   (myoLeg models' terrain_config.xml). `matfloor` is the material referenced by the
   shipped default terrain (terrain/default.xml). `terrain_mat` is kept because the
   render-side pointer references it; the generated-terrain "uniform" palette no
-  longer reads its rgba -- set that with `palette: {"uniform": [r, g, b, a]}` in the
+  longer reads its rgba; set that with `palette: {"uniform": [r, g, b, a]}` in the
   terrain config instead.
 -->
 
