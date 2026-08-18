@@ -26,8 +26,12 @@ def test_velocity_map_samples_every_tile_point():
     )
 
     assert len(samples) == 8
-    speeds = {sample.tile_type: sample.speed for sample in samples}
-    assert speeds["flat"] > speeds["rough"]
+    # Compare the slowest flat sample against the fastest rough one, rather than
+    # collapsing into a dict where the last sample of each type wins.
+    flat = [s.speed for s in samples if s.tile_type == "flat"]
+    rough = [s.speed for s in samples if s.tile_type == "rough"]
+    assert len(flat) == len(rough) == 4
+    assert min(flat) > max(rough)
 
 
 def test_velocity_map_vectors_point_toward_goal():

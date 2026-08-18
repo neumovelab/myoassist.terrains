@@ -8,30 +8,21 @@ vertical direction.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Iterable
 
 import numpy as np
 
-from myoassist_terrains.config import TerrainConfig, TileConfig
 from myoassist_terrains.composer import compute_cell_layouts, resolve_tiles
-from myoassist_terrains.noise import edge_taper, generate_complex_terrain
+from myoassist_terrains.config import TerrainConfig, TileConfig, UniformTerrainConfig
+from myoassist_terrains.surface import TerrainSurface
 from myoassist_terrains.tiles import REGISTRY
 
-
-DEFAULT_SPEED_SCALE: dict[str, float] = {
-    "flat": 1.00,
-    "slope": 0.72,
-    "stairs": 0.55,
-    "pyramid_stairs": 0.50,
-    "rough": 0.42,
-    "discrete_obstacles": 0.38,
-    "stepping_stones": 0.35,
-    "boulders": 0.32,
-    "gap": 0.25,
-}
+# Per-tile-type speed multipliers, derived from the registry rather than restated
+# here: each tile declares its own SPEED_SCALE, so a tile registered through
+# `register_tile` is covered automatically and this table cannot fall out of step
+# with the tile set. Read it for reporting; pass `speed_scale=` to override.
+DEFAULT_SPEED_SCALE: dict[str, float] = {name: impl.default_speed_scale for name, impl in REGISTRY.items()}
 
 
 @dataclass(frozen=True)
@@ -65,18 +56,33 @@ def generate_velocity_map(
     in [1 - jitter, 1 + jitter], keyed by (row, col) and `tile_jitter_seed`, so
     even identical-type tiles get distinct speeds/colours. 0 disables it.
     """
-    assert samples_per_tile >= 1
-    assert base_speed > 0.0
-    assert height_offset >= 0.0
-    assert mode in {"goal", "tile"}
-    assert tile_radial_mode in {"inward", "outward", "mixed"}
-    assert 0.0 <= tile_speed_jitter < 1.0
+    # Raised, not asserted: `python -O` strips asserts, and these validate
+    # caller input, including the spelling of `mode` and `tile_radial_mode`.
+    if isinstance(config, UniformTerrainConfig):
+        raise ValueError(
+            "generate_velocity_map needs the grid/tile config form; a uniform terrain has no "
+            "cells to sample over. Use myoassist_terrains.surface_height_at for point queries "
+            "on a uniform surface."
+        )
+    if samples_per_tile < 1:
+        raise ValueError(f"samples_per_tile must be >= 1, got {samples_per_tile}")
+    if base_speed <= 0.0:
+        raise ValueError(f"base_speed must be > 0, got {base_speed}")
+    if height_offset < 0.0:
+        raise ValueError(f"height_offset must be >= 0, got {height_offset}")
+    if mode not in {"goal", "tile"}:
+        raise ValueError(f"mode must be 'goal' or 'tile', got {mode!r}")
+    if tile_radial_mode not in {"inward", "outward", "mixed"}:
+        raise ValueError(f"tile_radial_mode must be 'inward', 'outward' or 'mixed', got {tile_radial_mode!r}")
+    if not (0.0 <= tile_speed_jitter < 1.0):
+        raise ValueError(f"tile_speed_jitter must be in [0, 1), got {tile_speed_jitter}")
 
     start_v = np.asarray(start, dtype=float)
     goal_v = np.asarray(goal, dtype=float)
-    assert start_v.shape == (3,)
-    assert goal_v.shape == (3,)
-    assert np.linalg.norm(goal_v[:2] - start_v[:2]) > 1e-9
+    if start_v.shape != (3,) or goal_v.shape != (3,):
+        raise ValueError(f"start and goal must be 3-vectors, got {start_v.shape} and {goal_v.shape}")
+    if float(np.linalg.norm(goal_v[:2] - start_v[:2])) <= 1e-9:
+        raise ValueError("start and goal must differ horizontally to define a direction")
 
     scales = dict(DEFAULT_SPEED_SCALE)
     if speed_scale is not None:
@@ -84,6 +90,10 @@ def generate_velocity_map(
 
     layouts = compute_cell_layouts(config)
     tiles = resolve_tiles(config)
+    # One surface for the whole map: it resolves the tiles and the cell layout
+    # once, instead of rebuilding them on each of the five height queries every
+    # sample makes.
+    surface = TerrainSurface(config)
     tw, tl = config.grid.tile_size
 
     offsets_x = _sample_offsets(tw, samples_per_tile)
@@ -91,9 +101,13 @@ def generate_velocity_map(
     out: list[VelocitySample] = []
 
     for tile in tiles:
-        assert tile.type in REGISTRY
-        scale = scales.get(tile.type)
-        assert scale is not None, f"missing speed scale for tile type {tile.type!r}"
+        if tile.type not in scales:
+            raise ValueError(
+                f"no speed scale for tile type {tile.type!r}. A tile registered through "
+                f"register_tile(..., speed_scale=...) supplies its own; otherwise pass "
+                f"speed_scale={{{tile.type!r}: <multiplier>}} here."
+            )
+        scale = scales[tile.type]
         layout = layouts[(tile.row, tile.col)]
         jitter = _tile_speed_jitter(tile.row, tile.col, tile_speed_jitter, tile_jitter_seed)
 
@@ -107,8 +121,8 @@ def generate_velocity_map(
                     direction_xy = _tile_direction_xy(tile, ox, oy, goal_direction_xy, tile_radial_mode)
                 else:
                     direction_xy = goal_direction_xy
-                direction, grade = _direction_and_grade(config, tiles, x, y, z, direction_xy)
-                roughness = _local_surface_roughness(config, tiles, x, y, z)
+                direction, grade = _direction_and_grade(surface, x, y, z, direction_xy)
+                roughness = _local_surface_roughness(surface, x, y, z)
                 speed = base_speed * scale * _grade_speed_scale(max(grade, roughness)) * jitter
                 velocity = direction * speed
                 out.append(
@@ -135,21 +149,22 @@ def estimate_surface_height(
     local_y: float,
     tile_size: tuple[float, float],
 ) -> float:
-    """Approximate walkable surface height at a local tile coordinate."""
-    params = dict(REGISTRY[tile.type].default_params)
-    params.update(tile.params)
+    """Walkable surface height at a tile-local coordinate.
 
-    if tile.type == "flat":
-        return float(params.get("height", 0.0))
-    if tile.type == "slope":
-        return _slope_height(params, local_x, local_y, tile_size)
-    if tile.type == "stairs":
-        return _stairs_height(params, local_x, local_y, tile_size)
-    if tile.type == "pyramid_stairs":
-        return _pyramid_height(params, local_x, local_y, tile_size)
-    if tile.type == "rough":
-        return _rough_height(params, local_x, local_y, tile_size)
-    return float(params.get("base_height", 0.0))
+    Dispatches to the tile's own `surface_height`, which lives beside the `emit`
+    that placed the geometry. This module used to keep a second, hand-derived
+    model of every tile; it disagreed with the emitted surface for four of the
+    nine tile types, which is why the height model now belongs to the tile.
+
+    A tile registered without a `surface_height` falls back to its `base_height`
+    parameter, which is correct only for a flat-topped tile.
+    """
+    impl = REGISTRY[tile.type]
+    params = dict(impl.default_params)
+    params.update(tile.params)
+    if impl.surface_height_fn is None:
+        return float(params.get("height", params.get("base_height", 0.0)))
+    return float(impl.surface_height_fn(local_x, local_y, tile_size=tile_size, **params))
 
 
 def _tile_speed_jitter(row: int, col: int, amplitude: float, seed: int) -> float:
@@ -166,6 +181,14 @@ def _tile_speed_jitter(row: int, col: int, amplitude: float, seed: int) -> float
 
 
 def _sample_offsets(length: float, count: int) -> np.ndarray:
+    """Sample offsets across one tile axis, inset from the edges.
+
+    A single sample belongs at the tile centre. `np.linspace(a, b, 1)` returns
+    the low endpoint, so the count==1 case used to place its one sample 32% of
+    the tile away from the centre.
+    """
+    if count == 1:
+        return np.zeros(1)
     margin = 0.18 * length / max(count, 1)
     return np.linspace(-length / 2 + margin, length / 2 - margin, count)
 
@@ -179,14 +202,13 @@ def _goal_direction_xy(x: float, y: float, goal: np.ndarray) -> np.ndarray:
 
 
 def _direction_and_grade(
-    config: TerrainConfig,
-    tiles: Iterable[TileConfig],
+    surface: TerrainSurface,
     x: float,
     y: float,
     z: float,
     direction_xy: np.ndarray,
 ) -> tuple[np.ndarray, float]:
-    assert direction_xy.shape == (2,)
+    assert direction_xy.shape == (2,)  # internal invariant: built by this module
     norm_xy = float(np.linalg.norm(direction_xy))
     if norm_xy < 1e-9:
         return np.asarray([0.0, 0.0, 0.0]), 0.0
@@ -194,10 +216,10 @@ def _direction_and_grade(
     step_xy = direction_xy / norm_xy
     probe_distance = 0.5
     probe_xy = np.asarray([x, y], dtype=float) + step_xy * probe_distance
-    probe_z = surface_height_at(config, tiles, float(probe_xy[0]), float(probe_xy[1]))
+    probe_z = surface.height_at(float(probe_xy[0]), float(probe_xy[1]))
     direction = np.asarray([step_xy[0], step_xy[1], probe_z - z], dtype=float)
     norm = float(np.linalg.norm(direction))
-    assert norm > 1e-12
+    assert norm > 1e-12  # internal invariant: step_xy is a unit vector
     grade = abs(float(probe_z - z)) / probe_distance
     return direction / norm, grade
 
@@ -219,13 +241,8 @@ def _tile_direction_xy(
             return np.asarray([1.0, 0.0], dtype=float)
         return np.asarray([0.0, 1.0], dtype=float)
 
-    if tile.type == "pyramid_stairs":
-        direction = _radial_direction(tile, local_x, local_y, radial_mode)
-        norm = float(np.linalg.norm(direction))
-        if norm > 1e-9:
-            return direction / norm
-
-    if tile.type in {"rough", "discrete_obstacles", "stepping_stones", "boulders"}:
+    # Tiles with no single travel axis get a radial flow instead.
+    if tile.type in {"pyramid_stairs", "rough", "discrete_obstacles", "stepping_stones", "boulders"}:
         direction = _radial_direction(tile, local_x, local_y, radial_mode)
         norm = float(np.linalg.norm(direction))
         if norm > 1e-9:
@@ -240,7 +257,7 @@ def _radial_direction(
     local_y: float,
     radial_mode: str,
 ) -> np.ndarray:
-    assert radial_mode in {"inward", "outward", "mixed"}
+    assert radial_mode in {"inward", "outward", "mixed"}  # validated by the caller
     outward = np.asarray([local_x, local_y], dtype=float)
     if radial_mode == "outward":
         return outward
@@ -255,7 +272,7 @@ def _radial_direction(
 
 def _grade_speed_scale(grade: float) -> float:
     """Slow down as surface grade increases along the travel direction."""
-    assert grade >= 0.0
+    assert grade >= 0.0  # internal invariant: computed as an absolute value
     return max(0.32, 1.0 / (1.0 + 2.6 * grade))
 
 
@@ -306,173 +323,30 @@ def _smooth_sample_speeds(
     return smoothed
 
 
-def _local_surface_roughness(
-    config: TerrainConfig,
-    tiles: Iterable[TileConfig],
-    x: float,
-    y: float,
-    z: float,
-) -> float:
+def _local_surface_roughness(surface: TerrainSurface, x: float, y: float, z: float) -> float:
     """Estimate local surface unevenness independent of goal direction."""
     probe = 0.35
     heights = [
-        surface_height_at(config, tiles, x + probe, y),
-        surface_height_at(config, tiles, x - probe, y),
-        surface_height_at(config, tiles, x, y + probe),
-        surface_height_at(config, tiles, x, y - probe),
+        surface.height_at(x + probe, y),
+        surface.height_at(x - probe, y),
+        surface.height_at(x, y + probe),
+        surface.height_at(x, y - probe),
     ]
     return max(abs(float(h - z)) / probe for h in heights)
 
 
 def surface_height_at(
     config: TerrainConfig,
-    tiles: Iterable[TileConfig],
+    tiles: Iterable[TileConfig] | None,  # noqa: ARG001 - kept for the published signature
     x: float,
     y: float,
 ) -> float:
-    layouts = compute_cell_layouts(config)
-    tw, tl = config.grid.tile_size
-    for tile in tiles:
-        layout = layouts[(tile.row, tile.col)]
-        local_x = x - layout.center_x
-        local_y = y - layout.center_y
-        if abs(local_x) <= tw / 2 and abs(local_y) <= tl / 2:
-            return estimate_surface_height(tile, local_x, local_y, config.grid.tile_size)
-    return 0.0
+    """Walkable surface height at world (x, y).
 
-
-def _axis_value(axis: str, local_x: float, local_y: float) -> float:
-    assert axis in {"x", "y"}
-    return local_x if axis == "x" else local_y
-
-
-def _slope_height(params: dict, local_x: float, local_y: float, tile_size: tuple[float, float]) -> float:
-    axis = str(params.get("axis", "y"))
-    base = float(params.get("base_height", 0.0))
-    long_total = tile_size[1] if axis == "y" else tile_size[0]
-    local = _axis_value(axis, local_x, local_y)
-    plateau_ratio = float(params.get("plateau_ratio", 0.1))
-    ramp_len = (long_total - plateau_ratio * long_total) / 2.0
-    excursion = ramp_len * math.tan(math.radians(float(params.get("angle_deg", 12.0))))
-    if bool(params.get("inverted", False)):
-        excursion *= -1.0
-
-    dist_from_edge = min(local + long_total / 2.0, long_total / 2.0 - local)
-    t = max(0.0, min(1.0, dist_from_edge / ramp_len))
-    return base + excursion * t
-
-
-def _stairs_height(params: dict, local_x: float, local_y: float, tile_size: tuple[float, float]) -> float:
-    axis = str(params.get("axis", "y"))
-    base = float(params.get("base_height", 0.0))
-    long_total = tile_size[1] if axis == "y" else tile_size[0]
-    local = _axis_value(axis, local_x, local_y)
-    n_steps = int(params.get("n_steps", 6))
-    step_height = float(params.get("step_height", 0.15))
-    peak_width = float(params.get("peak_width", 0.4))
-    step_width = params.get("step_width")
-    if step_width is None:
-        step_width = (long_total - peak_width) / (2 * n_steps)
-    step_width = float(step_width)
-    dist_from_edge = min(local + long_total / 2.0, long_total / 2.0 - local)
-    level = min(n_steps, max(0, int(dist_from_edge / step_width)))
-    excursion = level * step_height
-    if bool(params.get("inverted", False)):
-        excursion *= -1.0
-    return base + excursion
-
-
-def _pyramid_height(params: dict, local_x: float, local_y: float, tile_size: tuple[float, float]) -> float:
-    base = float(params.get("base_height", 0.0))
-    n_steps = int(params.get("n_steps", 5))
-    step_height = float(params.get("step_height", 0.2))
-    step_width = float(params.get("step_width", 0.5))
-    outer_margin = float(params.get("outer_margin", 0.5))
-    edge_dist = min(
-        tile_size[0] / 2.0 - abs(local_x),
-        tile_size[1] / 2.0 - abs(local_y),
-    )
-    level = min(n_steps, max(0, int((edge_dist - outer_margin) / step_width) + 1))
-    excursion = level * step_height
-    if bool(params.get("inverted", False)):
-        excursion *= -1.0
-    return base + excursion
-
-
-def _rough_height(params: dict, local_x: float, local_y: float, tile_size: tuple[float, float]) -> float:
-    base = float(params.get("base_height", 0.0))
-    relief = float(params.get("vertical_relief", 0.8))
-    relief_mode = str(params.get("relief_mode", "centered"))
-    assert relief_mode in {"centered", "up", "down"}
-
-    heightmap = _rough_heightmap(
-        int(params.get("seed", 0)),
-        int(params.get("grid_resolution", 256)),
-        int(params.get("terrace_levels", 5)),
-        int(params.get("num_pits", 18)),
-        int(params.get("num_hills", 24)),
-        float(params.get("pit_threshold", 0.33)),
-        float(params.get("plateau_threshold", 0.68)),
-        float(params.get("edge_taper_frac", 0.10)),
-        relief_mode,
-    )
-    value = _bilinear_heightmap_sample(heightmap, local_x, local_y, tile_size)
-    if relief_mode == "up":
-        return base + value * relief
-    if relief_mode == "down":
-        return base - relief + value * relief
-    return base - relief / 2.0 + value * relief
-
-
-@lru_cache(maxsize=64)
-def _rough_heightmap(
-    seed: int,
-    grid_resolution: int,
-    terrace_levels: int,
-    num_pits: int,
-    num_hills: int,
-    pit_threshold: float,
-    plateau_threshold: float,
-    edge_taper_frac: float,
-    relief_mode: str,
-) -> np.ndarray:
-    raw = generate_complex_terrain(
-        shape=(grid_resolution, grid_resolution),
-        seed=seed,
-        terrace_levels=terrace_levels,
-        num_pits=num_pits,
-        num_hills=num_hills,
-        pit_threshold=pit_threshold,
-        plateau_threshold=plateau_threshold,
-        edge_taper_frac=0.0,
-    )
-    mask = edge_taper(raw.shape, taper_frac=edge_taper_frac)
-    if relief_mode == "up":
-        return raw * mask
-    if relief_mode == "down":
-        return 1.0 - (raw * mask)
-    return (raw - 0.5) * mask + 0.5
-
-
-def _bilinear_heightmap_sample(
-    heightmap: np.ndarray,
-    local_x: float,
-    local_y: float,
-    tile_size: tuple[float, float],
-) -> float:
-    h, w = heightmap.shape
-    u = (local_x / tile_size[0]) + 0.5
-    v = (local_y / tile_size[1]) + 0.5
-    px = max(0.0, min(w - 1.0, u * (w - 1)))
-    py = max(0.0, min(h - 1.0, v * (h - 1)))
-
-    x0 = int(math.floor(px))
-    y0 = int(math.floor(py))
-    x1 = min(x0 + 1, w - 1)
-    y1 = min(y0 + 1, h - 1)
-    tx = px - x0
-    ty = py - y0
-
-    a = float(heightmap[y0, x0]) * (1.0 - tx) + float(heightmap[y0, x1]) * tx
-    b = float(heightmap[y1, x0]) * (1.0 - tx) + float(heightmap[y1, x1]) * tx
-    return a * (1.0 - ty) + b * ty
+    Kept for the documented signature. `tiles` is accepted and ignored:
+    `TerrainSurface` resolves the tiles itself, randomized ones included, so the
+    caller no longer has to pre-resolve them. New code should prefer
+    `myoassist_terrains.surface_height_at(config, x, y)`, which also handles the
+    uniform config form and reports connector-strip heights instead of 0.0.
+    """
+    return TerrainSurface(config).height_at(x, y)

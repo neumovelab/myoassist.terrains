@@ -5,22 +5,22 @@
     License :: Apache 2.0
 ====================================================== -->
 <!--
-  Active terrain pointer. Model XMLs (26muscle_3D/myoLeg26_*.xml) include
-  this file at root level. In turn it chains:
+  Active terrain pointer. A user model includes this file at root level (see
+  docs/project-layout.md for the expected directory layout). In turn it chains:
 
     1. ../terrain_style.xml     : shared style (skybox, materials, haze, lights)
     2. ../terrain/default.xml   : currently-active terrain content
 
   Out of the box the second line points at the shipped default terrain
   (terrain/default.xml) so a model loads with a simple flat ground even when
-  nothing has been generated. Running `myoassGreist_terrains build` with the
+  nothing has been generated. Running `myoassist-terrains build` with the
   activate flag (or set-active NAME) rewrites that line to a generated
   terrain/<name>.xml; `set-active default` restores this default.
 
   Path note: MuJoCo resolves nested includes relative to the TOP-LEVEL model
-  file's directory (model/26muscle_3D/), not relative to this file. The
-  "../" prefix climbs out of the model dir back to model/. If model files
-  live at a different depth, adjust the prefix.
+  file's directory, not relative to this file. The "../" prefix climbs out of the
+  model directory before descending again. If your model files live at a different
+  depth, adjust the prefix.
 -->
 
 <mujocoinclude>

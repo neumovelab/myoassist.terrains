@@ -24,6 +24,45 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+PALETTE_PRESETS = frozenset({"diverse", "uniform", "custom"})
+
+
+def _validate_terrain_name(name: str) -> None:
+    r"""`terrain_name` becomes a filename, so it has to be a bare one.
+
+    Without this a name containing a separator or `..` writes the generated XML
+    outside the terrain library, where `set-active` cannot find it again.
+
+    Both separators are rejected on every platform, deliberately. `Path` only treats
+    `\` as one on Windows, so relying on it would make `{"terrain_name": "a\b"}`
+    an error on Windows and a legal filename on Linux -- and a config is a shared
+    artifact that gets built on both.
+    """
+    if not name:
+        raise ValueError("terrain_name is required and must be non-empty")
+    if "/" in name or "\\" in name or name in {".", ".."} or name != Path(name).name:
+        raise ValueError(
+            f"terrain_name must be a bare file name (no path separators or '..'), got {name!r}; "
+            f"it is used as the generated file name terrain/<terrain_name>.xml."
+        )
+
+
+def _reject_unknown_keys(raw: dict[str, Any], known: set[str], form: str) -> None:
+    """Reject unrecognised top-level keys.
+
+    Silently ignoring them means a typo changes the terrain without saying so: a
+    config asking for `{"terrain": "slope", "dge": 8}` used to build flat ground
+    and pass validation, which is a wrong-experiment failure rather than a crash.
+    Keys starting with `_` are allowed through as comments, matching the
+    `_comment` convention used in the bundled render configs.
+    """
+    unknown = sorted(k for k in raw if k not in known and not k.startswith("_"))
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) {unknown} in the {form} terrain config. Valid keys: {sorted(known)}. "
+            f"Prefix a key with '_' to keep it as a comment."
+        )
+
 
 # ---------------------------------------------------------------------------
 # Dataclass definitions
@@ -128,10 +167,17 @@ class TerrainConfig:
     texture: TextureConfig | None = None
 
     def __post_init__(self) -> None:
-        if self.palette_preset not in {"diverse", "uniform", "custom"}:
-            raise ValueError(f"palette_preset must be one of {{'diverse','uniform','custom'}}, got {self.palette_preset!r}")
-        if not self.terrain_name:
-            raise ValueError("terrain_name is required and must be non-empty")
+        if self.palette_preset not in PALETTE_PRESETS:
+            raise ValueError(f"palette_preset must be one of {sorted(PALETTE_PRESETS)}, got {self.palette_preset!r}")
+        _validate_terrain_name(self.terrain_name)
+        # A cell can hold one tile. Two entries for the same cell used to emit
+        # overlapping geometry, or collide on a geom name inside MuJoCo, depending
+        # on whether the types matched.
+        seen: set[tuple[int, int]] = set()
+        for t in self.tiles:
+            if (t.row, t.col) in seen:
+                raise ValueError(f"Duplicate tile at (row={t.row}, col={t.col}); each cell may hold only one tile.")
+            seen.add((t.row, t.col))
         if not self.tiles and self.randomization is None:
             raise ValueError(
                 "Config must include either 'tiles' (explicit per-cell placement), "
@@ -190,8 +236,9 @@ class UniformTerrainConfig:
             raise ValueError(f"terrain must be one of {sorted(UNIFORM_TERRAIN_TYPES)}, got {self.terrain!r}")
         if not self.terrain_name:
             self.terrain_name = f"uniform_{self.terrain}"
-        if self.palette_preset not in {"diverse", "uniform", "custom"}:
-            raise ValueError(f"palette_preset must be one of {{'diverse','uniform','custom'}}, got {self.palette_preset!r}")
+        _validate_terrain_name(self.terrain_name)
+        if self.palette_preset not in PALETTE_PRESETS:
+            raise ValueError(f"palette_preset must be one of {sorted(PALETTE_PRESETS)}, got {self.palette_preset!r}")
         if self.extent <= 0:
             raise ValueError(f"extent must be > 0, got {self.extent}")
         if self.resolution < 8:
@@ -242,7 +289,35 @@ def _config_from_dict(
     return _grid_config_from_dict(raw)
 
 
+_UNIFORM_KEYS = {
+    "terrain",
+    "terrain_name",
+    "deg",
+    "amplitude",
+    "period",
+    "seed",
+    "extent",
+    "resolution",
+    "safe_zone_radius",
+    "base_depth",
+    "palette_preset",
+    "palette",
+    "texture",
+}
+_GRID_KEYS = {
+    "terrain_name",
+    "grid",
+    "border",
+    "palette_preset",
+    "palette",
+    "tiles",
+    "randomization",
+    "texture",
+}
+
+
 def _uniform_from_dict(raw: dict[str, Any]) -> UniformTerrainConfig:
+    _reject_unknown_keys(raw, _UNIFORM_KEYS, "uniform")
     texture = _texture_from_raw(raw.get("texture"))
     return UniformTerrainConfig(
         terrain=str(raw["terrain"]),
@@ -277,6 +352,7 @@ def _texture_from_raw(texture_raw: Any) -> TextureConfig | None:
 
 
 def _grid_config_from_dict(raw: dict[str, Any]) -> TerrainConfig:
+    _reject_unknown_keys(raw, _GRID_KEYS, "grid")
     grid_raw = raw.get("grid", {})
     grid = GridConfig(
         rows=int(grid_raw["rows"]),
@@ -319,20 +395,6 @@ def _grid_config_from_dict(raw: dict[str, Any]) -> TerrainConfig:
             param_ranges=param_ranges_raw,
         )
 
-    texture_raw = raw.get("texture")
-    texture: TextureConfig | None = None
-    if texture_raw is not None:
-        if isinstance(texture_raw, str):
-            # Convenience: bare-string form sets just the file path.
-            texture = TextureConfig(file=texture_raw)
-        else:
-            texture = TextureConfig(
-                file=str(texture_raw["file"]),
-                name=str(texture_raw.get("name", "terrain_texture")),
-                repeat=tuple(texture_raw.get("repeat", (4.0, 4.0))),  # type: ignore[arg-type]
-                texuniform=bool(texture_raw.get("texuniform", True)),
-            )
-
     return TerrainConfig(
         terrain_name=str(raw["terrain_name"]),
         grid=grid,
@@ -341,5 +403,7 @@ def _grid_config_from_dict(raw: dict[str, Any]) -> TerrainConfig:
         palette={k: list(v) for k, v in raw.get("palette", {}).items()},
         tiles=tiles,
         randomization=randomization,
-        texture=texture,
+        # One texture parser for both config forms; the grid path used to carry a
+        # verbatim copy of it.
+        texture=_texture_from_raw(raw.get("texture")),
     )

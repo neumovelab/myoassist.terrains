@@ -17,7 +17,6 @@ from myoassist_terrains.config import (
     load_config,
 )
 
-
 # ---------------------------------------------------------------------------
 # GridConfig
 

@@ -24,9 +24,8 @@ from myoassist_terrains.config import (
 )
 from myoassist_terrains.tiles import REGISTRY
 
-
-# Tiles whose default params would build but produce nothing visible by themselves
-# (e.g. gap with default gap_width consumes most of a 1m tile). Override here.
+# Per-tile overrides that keep this smoke test cheap (a coarse hfield) or give a
+# tile a shape worth compiling at the 4 m tile size used below.
 PER_TILE_PARAMS = {
     "rough": {
         "seed": 1,

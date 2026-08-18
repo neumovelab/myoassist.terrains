@@ -1,9 +1,9 @@
+import argparse
 import json
 import xml.etree.ElementTree as ET
-from typing import Dict, List
 
 
-def camera_xml_to_json(xml_string: str) -> Dict[str, List[float]]:
+def camera_xml_to_json(xml_string: str) -> dict[str, list[float]]:
     """
     Convert MuJoCo camera XML to JSON format matching ensemble config.
 
@@ -27,11 +27,25 @@ def camera_xml_to_json(xml_string: str) -> Dict[str, List[float]]:
     return {"pos": pos, "xyaxes": xyaxes}
 
 
-# camera XML
-camera_xml = '<camera pos="3.237 -0.079 1.209" xyaxes="0.016 1.000 0.000 -0.131 0.002 0.991"/>'
+def camera_json_to_xml(pos: list[float], xyaxes: list[float]) -> str:
+    """Convert the ensemble-config form back to a MuJoCo <camera> element."""
+    pos_s = " ".join(f"{v:.3f}" for v in pos)
+    axes_s = " ".join(f"{v:.3f}" for v in xyaxes)
+    return f'<camera pos="{pos_s}" xyaxes="{axes_s}"/>'
 
-# Convert to JSON
-camera_json = camera_xml_to_json(camera_xml)
 
-# Pretty print the result
-print(json.dumps(camera_json, indent=2))
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Convert a MuJoCo camera between XML and ensemble-config JSON.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--xml", help='a <camera .../> element, e.g. \'<camera pos="1 2 3" xyaxes="..."/>\'')
+    group.add_argument("--json", help='{"pos": [...], "xyaxes": [...]}')
+    args = parser.parse_args()
+    if args.xml:
+        print(json.dumps(camera_xml_to_json(args.xml), indent=2))
+    else:
+        payload = json.loads(args.json)
+        print(camera_json_to_xml(payload["pos"], payload["xyaxes"]))
+
+
+if __name__ == "__main__":
+    main()

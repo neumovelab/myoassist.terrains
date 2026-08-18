@@ -20,7 +20,6 @@ from pathlib import Path
 
 import mujoco
 
-
 HERE = Path(__file__).resolve().parent
 OUT_PATH = HERE / "myoassist_ensemble_config.json"
 TILED_OUT_PATH = HERE / "myoassist_ensemble_tiled_config.json"

@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Visualization",
 ]
@@ -50,17 +51,40 @@ Issues = "https://github.com/neumovelab/myoassist.terrains/issues"
 where = ["src"]
 include = ["myoassist_terrains*"]
 
+[tool.coverage.run]
+source = ["myoassist_terrains"]
+branch = true
+
+[tool.coverage.report]
+# Reported, not gated. cli.py and paths.py went from no coverage at all to covered
+# in this pass, so the trend is the useful signal; a fixed floor mostly blocks the
+# next contributor over an arbitrary number.
+show_missing = true
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
+
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra --strict-markers"
 
-# Lint/format config -- mirrors assist_sim / myo_sim so tooling is consistent across repos.
+# Lint/format config. Line length and the E/F/W core match assist_sim and myo_sim so
+# tooling is consistent across the repos; `I` matches myo_sim, which already sorts
+# imports. `ARG` is on because four dead parameters survived review here -- one of
+# them, `rough`'s `asset_path_prefix`, looked like a control over the emitted asset
+# path and did nothing.
 [tool.ruff]
 line-length = 128
-extend-exclude = [".claude", "external"]
+extend-exclude = [".claude"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
+select = ["E", "F", "W", "I", "ARG"]
 ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["myoassist_terrains"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test doubles have to match the signature the registry calls them with, so their
+# unused parameters are the point rather than an oversight.
+"tests/*.py" = ["ARG001"]

@@ -1,25 +1,147 @@
 {
   "terrain_name": "myoassist_base",
-  "grid": { "rows": 3, "cols": 3, "tile_size": [8.0, 8.0] },
-  "border": { "width": 0.8, "match_mode": "min" },
+  "grid": {
+    "rows": 3,
+    "cols": 3,
+    "tile_size": [
+      8.0,
+      8.0
+    ]
+  },
+  "border": {
+    "width": 0.8,
+    "match_mode": "min"
+  },
   "palette_preset": "uniform",
+  "palette": {
+    "uniform": [
+      0.31,
+      0.663,
+      0.667,
+      1.0
+    ]
+  },
   "texture": {
     "file": "CONCRETE.png",
     "name": "terrain_concrete",
-    "repeat": [0.5, 0.5],
+    "repeat": [
+      0.5,
+      0.5
+    ],
     "texuniform": true
   },
   "tiles": [
-    { "row": 0, "col": 0, "type": "slope",              "params": { "angle_deg": 22.0, "axis": "x", "plateau_ratio": 0.10, "inverted": false } },
-    { "row": 0, "col": 1, "type": "stairs",             "params": { "n_steps": 6, "step_height": 0.18, "peak_width": 0.4, "axis": "y", "inverted": false } },
-    { "row": 0, "col": 2, "type": "pyramid_stairs",     "params": { "n_steps": 4, "step_height": 0.18, "step_width": 0.5, "outer_margin": 0.5, "inverted": false } },
-
-    { "row": 1, "col": 0, "type": "rough",              "params": { "seed": 11, "vertical_relief": 1.10, "num_pits": 35, "num_hills": 45 } },
-    { "row": 1, "col": 1, "type": "discrete_obstacles", "params": { "seed": 3, "density": 0.4, "size_range": [0.20, 0.45], "height_range": [0.15, 0.35] } },
-    { "row": 1, "col": 2, "type": "slope",              "params": { "angle_deg": 18.0, "axis": "y", "plateau_ratio": 0.15, "inverted": true } },
-
-    { "row": 2, "col": 0, "type": "stepping_stones",    "params": { "rows": 4, "cols": 4, "stone_size": 0.50, "stone_height": 0.18, "jitter_frac": 0.20, "seed": 9 } },
-    { "row": 2, "col": 1, "type": "pyramid_stairs",     "params": { "n_steps": 4, "step_height": 0.18, "step_width": 0.5, "outer_margin": 0.5, "inverted": true } },
-    { "row": 2, "col": 2, "type": "boulders",           "params": { "seed": 5, "density": 0.30, "size_range": [0.20, 0.50] } }
+    {
+      "row": 0,
+      "col": 0,
+      "type": "slope",
+      "params": {
+        "angle_deg": 22.0,
+        "axis": "x",
+        "plateau_ratio": 0.1,
+        "inverted": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 1,
+      "type": "stairs",
+      "params": {
+        "n_steps": 6,
+        "step_height": 0.18,
+        "peak_width": 0.4,
+        "axis": "y",
+        "inverted": false
+      }
+    },
+    {
+      "row": 0,
+      "col": 2,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": false
+      }
+    },
+    {
+      "row": 1,
+      "col": 0,
+      "type": "rough",
+      "params": {
+        "seed": 11,
+        "vertical_relief": 1.1,
+        "num_pits": 35,
+        "num_hills": 45
+      }
+    },
+    {
+      "row": 1,
+      "col": 1,
+      "type": "discrete_obstacles",
+      "params": {
+        "seed": 3,
+        "density": 0.4,
+        "size_range": [
+          0.2,
+          0.45
+        ],
+        "height_range": [
+          0.15,
+          0.35
+        ]
+      }
+    },
+    {
+      "row": 1,
+      "col": 2,
+      "type": "slope",
+      "params": {
+        "angle_deg": 18.0,
+        "axis": "y",
+        "plateau_ratio": 0.15,
+        "inverted": true
+      }
+    },
+    {
+      "row": 2,
+      "col": 0,
+      "type": "stepping_stones",
+      "params": {
+        "rows": 4,
+        "cols": 4,
+        "stone_size": 0.5,
+        "stone_height": 0.18,
+        "jitter_frac": 0.2,
+        "seed": 9
+      }
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "type": "pyramid_stairs",
+      "params": {
+        "n_steps": 4,
+        "step_height": 0.18,
+        "step_width": 0.5,
+        "outer_margin": 0.5,
+        "inverted": true
+      }
+    },
+    {
+      "row": 2,
+      "col": 2,
+      "type": "boulders",
+      "params": {
+        "seed": 5,
+        "density": 0.3,
+        "size_range": [
+          0.2,
+          0.5
+        ]
+      }
+    }
   ]
 }

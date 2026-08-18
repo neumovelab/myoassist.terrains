@@ -26,8 +26,8 @@ def run(cmd):
         sys.exit(result.returncode)
 
 
-# 1) Build the base. Picks up edits to base JSON and to terrain_style.xml's
-#    `terrain_mat` rgba (composer reads it for uniform-mode geom rgba).
+# 1) Build the base. Picks up edits to the base JSON, including its
+#    palette: {"uniform": [...]} entry, which is where the uniform colour lives.
 run([sys.executable, "-m", "myoassist_terrains", "build", str(base_json)])
 
 # 2) Regenerate the tiled JSON from the (possibly edited) base JSON. Carries

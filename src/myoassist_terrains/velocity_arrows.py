@@ -18,7 +18,8 @@ from myoassist_terrains.velocity_map import VelocitySample
 def quat_from_z_axis(vector: np.ndarray) -> tuple[float, float, float, float]:
     """Quaternion that rotates world +Z onto `vector`."""
     norm = float(np.linalg.norm(vector))
-    assert norm > 1e-12
+    if norm <= 1e-12:
+        raise ValueError("cannot orient a quaternion from a zero-length vector")
     target = vector / norm
     source = np.asarray([0.0, 0.0, 1.0], dtype=float)
     dot = float(np.dot(source, target))
@@ -47,7 +48,7 @@ def _ramp_rgb(t: float) -> tuple[float, float, float]:
 def rgba_for_speed(speed: float, lo: float, hi: float) -> str:
     """Red (slow) → yellow (mid) → green (fast) RGBA string.
 
-    Colour is stretched across the observed [lo, hi] speed range rather than
+    Color is stretched across the observed [lo, hi] speed range rather than
     [0, max], so the full red→green spread is used even when most samples
     cluster near the top speed. The yellow midpoint widens the legible range.
     """
@@ -107,7 +108,13 @@ def add_velocity_overlay(
     emissive materials and geoms reference those instead of a raw rgba.
     0 keeps the original flat per-geom rgba.
     """
-    assert emission >= 0.0
+    if emission < 0.0:
+        raise ValueError(f"emission must be >= 0, got {emission}")
+    if not samples:
+        raise ValueError(
+            "no velocity samples to draw. generate_velocity_map returns at least one "
+            "sample for a valid config, so an empty list points at the caller."
+        )
     head_len = 0.25
     head_bins = 8
     for bin_idx in range(head_bins):
@@ -122,7 +129,8 @@ def add_velocity_overlay(
 
     glow = emission > 0.0
     if glow:
-        assert color_bins >= 2
+        if color_bins < 2:
+            raise ValueError(f"color_bins must be >= 2 when emission > 0, got {color_bins}")
         for k in range(color_bins):
             r, g, b = _ramp_rgb(k / (color_bins - 1))
             asset.append(

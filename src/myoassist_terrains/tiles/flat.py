@@ -11,7 +11,6 @@ import mujoco as mj
 
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 
-
 # Diverse-mode default; placeholder until a curated palette is provided.
 DEFAULT_RGBA: tuple[float, float, float, float] = (0.78, 0.78, 0.78, 1.0)
 
@@ -27,6 +26,17 @@ PARAM_RANGES: dict[str, tuple[float, float]] = {
     # config.
 }
 
+PARAM_DOCS: dict[str, str] = {
+    "height": "Top face z-coordinate (offset above the grid plane).",
+}
+
+SPEED_SCALE = 1.00
+
+
+def surface_height(_local_x: float, _local_y: float, *, height: float = 0.0, **_) -> float:
+    """Walkable surface height. The whole tile top sits at `height`."""
+    return float(height)
+
 
 def emit(
     spec: mj.MjSpec,
@@ -37,8 +47,6 @@ def emit(
     rgba: tuple[float, float, float, float] | None = None,
     material: str | None = None,
     height: float = 0.0,
-    output_dir=None,  # unused; accepted for uniform composer API
-    terrain_name=None,  # unused; accepted for uniform composer API
 ) -> TileEmitResult:
     """Emit a flat tile centered at (origin_x, origin_y) with top face at origin_z + height.
 
@@ -56,7 +64,7 @@ def emit(
         raise ValueError(
             f"flat tile {name!r} has top z={top_z:.3f} <= BASELINE_Z={bottom_z:.3f}; "
             f"`height` must satisfy origin_z + height > BASELINE_Z. "
-            f"For tiles meant to dip below baseline, use a `gap` tile (M4)."
+            f"For a tile meant to dip below the baseline, use a `gap` tile."
         )
     half_z = (top_z - bottom_z) / 2
     center_z = (top_z + bottom_z) / 2

@@ -22,7 +22,6 @@ import mujoco as mj
 
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 
-
 # Diverse-mode default; placeholder until a curated palette is provided.
 DEFAULT_RGBA: tuple[float, float, float, float] = (0.30, 0.30, 0.30, 1.0)  # dark slate
 
@@ -37,6 +36,26 @@ PARAM_RANGES: dict[str, tuple[float, float]] = {
     # base_height intentionally not randomized — see flat.py for the rationale.
 }
 
+PARAM_DOCS: dict[str, str] = {
+    "gap_width": "Width of the trench in meters.",
+    "axis": "Axis the trench RUNS along, so the crossing direction is perpendicular to it.",
+    "base_height": "z-coordinate of the tile's flat-edge base.",
+}
+
+SPEED_SCALE = 0.25
+
+
+def surface_height(_local_x: float, _local_y: float, *, base_height: float = 0.0, **_) -> float:
+    """Walkable surface height: `base_height` everywhere.
+
+    Both half-slabs sit at `base_height`. Over the trench there is no surface at
+    all, and this still answers `base_height` — a caller asking "how high is the
+    ground here" wants the level it would step off from, and returning None would
+    force every caller to special-case this one tile. `emit` leaves the trench
+    empty regardless, so contact and rendering are unaffected.
+    """
+    return float(base_height)
+
 
 def emit(
     spec: mj.MjSpec,
@@ -49,8 +68,6 @@ def emit(
     gap_width: float = 0.5,
     axis: str = "y",
     base_height: float = 0.0,
-    output_dir=None,
-    terrain_name=None,
 ) -> TileEmitResult:
     if axis not in ("x", "y"):
         raise ValueError(f"gap.axis must be 'x' or 'y' (got {axis!r})")

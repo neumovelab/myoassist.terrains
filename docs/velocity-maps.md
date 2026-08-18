@@ -4,15 +4,18 @@ A **velocity map** is a sampled 3D vector field laid over a terrain: at points
 across every tile it stores a direction (toward a goal, optionally with a
 per-tile radial component) and a speed that is slowed by the local tile type,
 surface grade, and roughness. It is used to author and visualize
-target-velocity fields for locomotion tasks (the field rendered in the paper's
-Fig. 3(b)) and as an input to velocity-tracking rewards downstream.
+target-velocity fields for locomotion tasks and as an input to velocity-tracking
+rewards downstream.
 
 The subsystem is two modules:
 
-- **`myoassist_terrains.velocity_map`** — builds the field from a
-  `TerrainConfig` (no MuJoCo model needed).
-- **`myoassist_terrains.velocity_arrows`** — turns a field into red→green arrow
-  geoms injected into an MJCF scene for rendering.
+- **`myoassist_terrains.velocity_map`** builds the field from a `TerrainConfig`,
+  with no MuJoCo model needed. It requires the **grid** config form: a uniform
+  terrain has no cells to sample over, and passing one is rejected with a message
+  saying so. For point queries on a uniform surface use
+  `myoassist_terrains.surface_height_at`.
+- **`myoassist_terrains.velocity_arrows`** turns a field into red-to-green arrow
+  geoms injected into an MJCF scene for rendering. The arrows are non-colliding.
 
 ### Building a field
 
@@ -44,24 +47,27 @@ tile_jitter_seed=0)` returns `list[VelocitySample]`. Key knobs:
 | `start`, `goal` | World `(x, y, z)`; horizontal direction points from each sample toward `goal`. |
 | `samples_per_tile` | Grid density per tile (`n × n` samples). |
 | `base_speed` | Speed on flat terrain before per-tile / grade scaling. |
-| `speed_scale` | Override the per-tile-type multiplier (default `DEFAULT_SPEED_SCALE`, flat `1.0` → gap `0.25`). |
+| `speed_scale` | Override the per-tile-type multiplier. `DEFAULT_SPEED_SCALE` is derived from the registry, since each tile declares its own `SPEED_SCALE` (flat `1.0` down to gap `0.25`). A tile registered through `register_tile(..., speed_scale=...)` is covered automatically; one registered without it defaults to flat speed. |
 | `mode` | `"goal"` (straight to goal) or `"tile"` (blend in a radial component). |
 | `tile_radial_mode` | For `mode="tile"`: `"inward"`, `"outward"`, or `"mixed"`. |
-| `smooth_speeds` | Spatially smooth neighbouring sample speeds. |
+| `smooth_speeds` | Spatially smooth neighboring sample speeds. |
 | `tile_speed_jitter`, `tile_jitter_seed` | Deterministic per-tile speed variation in `[1-j, 1+j]`, so identical tile types still read distinctly. |
 | `height_offset` | Lift samples above the surface (arrow placement). |
 
-Two surface-height helpers back the field and are useful on their own:
-`estimate_surface_height(tile, local_x, local_y, tile_size)` (per-tile-type
-walkable height at a local coordinate) and `surface_height_at(config, tiles, x,
-y)` (world-coordinate lookup across the resolved grid).
+Surface heights come from the tiles themselves: `estimate_surface_height(tile,
+local_x, local_y, tile_size)` dispatches to the tile's own `surface_height`, which
+lives beside the `emit` that placed the geometry. For world-coordinate lookups
+prefer `myoassist_terrains.surface_height_at(config, x, y)`, which also handles the
+uniform config form and reports connector-strip heights.
+
+`samples_per_tile=1` places its single sample at the tile center.
 
 ### Rendering arrows
 
 `add_velocity_overlay(worldbody, asset, samples, *, emission=0.0,
 color_bins=32)` appends a shaft + cone-head arrow per sample to an existing
 scene's `<worldbody>`/`<asset>` (`xml.etree.ElementTree` elements). Arrows are
-non-colliding (`contype/conaffinity=0`) and coloured red (slow) → green (fast)
+non-colliding (`contype/conaffinity=0`) and colored red (slow) -> green (fast)
 across the observed speed range; `emission > 0` makes them self-illuminate so
 they stay legible against the terrain. Call it after the terrain/model geoms
 are in the scene so name-uniqueness checks pass.
