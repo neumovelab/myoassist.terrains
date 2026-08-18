@@ -27,6 +27,7 @@ height around their full perimeter (v1 flat-at-base contract).
 
 from __future__ import annotations
 
+import inspect
 import math
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -213,6 +214,50 @@ def _bind_default_floor_texture(spec: mj.MjSpec, material) -> None:
     material.texuniform = True
 
 
+# Build-environment kwargs the composer can supply. A tile only receives the
+# ones its `emit` actually declares, so a tile that has no assets to write does
+# not carry unused parameters just to satisfy a uniform call.
+_ENV_KWARGS = ("output_dir", "terrain_name")
+
+
+def _accepted_params(emit_fn) -> set[str] | None:
+    """Parameter names `emit_fn` accepts, or None if it takes **kwargs."""
+    parameters = inspect.signature(emit_fn).parameters.values()
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters):
+        return None
+    return {p.name for p in parameters}
+
+
+def _tile_call_params(impl, tile_cfg, output_dir, terrain_name: str) -> dict:
+    """Merge tile defaults with user params, validating the user's keys.
+
+    An unknown key is a config typo. Reporting it here names the tile, the cell
+    and the valid set, instead of surfacing as a bare
+    `TypeError: emit() got an unexpected keyword argument`.
+    """
+    accepted = _accepted_params(impl.emit_fn)
+    if accepted is not None:
+        unknown = sorted(set(tile_cfg.params) - accepted)
+        if unknown:
+            valid = sorted(set(impl.default_params) | set(_ENV_KWARGS) & accepted)
+            raise ValueError(
+                f"tile {tile_cfg.type!r} at (row={tile_cfg.row}, col={tile_cfg.col}): "
+                f"unknown param(s) {unknown}; valid params: {valid}"
+            )
+
+    params = dict(impl.default_params)
+    params.update(tile_cfg.params)
+    # Composer-level kwargs override anything user-supplied for those keys: they
+    # are build-environment concerns, not per-tile config.
+    env = {"output_dir": output_dir, "terrain_name": terrain_name}
+    for key, value in env.items():
+        if accepted is None or key in accepted:
+            params[key] = value
+        else:
+            params.pop(key, None)
+    return params
+
+
 def build_terrain(
     config: TerrainConfig | UniformTerrainConfig,
     output_dir: Optional[Path] = None,
@@ -263,14 +308,7 @@ def build_terrain(
         layout = layouts[(tile_cfg.row, tile_cfg.col)]
         appearance = _resolve_appearance(config, tile_cfg.type, impl.default_rgba, uniform_rgba)
 
-        # Merge tile defaults with the user-specified params; user wins.
-        # Composer-level kwargs (output_dir) override anything user-supplied
-        # for those keys, since they're build-environment concerns, not
-        # per-tile config.
-        params = dict(impl.default_params)
-        params.update(tile_cfg.params)
-        params["output_dir"] = output_dir
-        params["terrain_name"] = config.terrain_name
+        params = _tile_call_params(impl, tile_cfg, output_dir, config.terrain_name)
 
         result = impl.emit_fn(
             spec,
