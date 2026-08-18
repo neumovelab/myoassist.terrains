@@ -43,13 +43,12 @@ PERIMETER_TOL_DEFAULT = 1e-3
 # Height-model tolerance. Box-geometry tiles are exact against a ray cast.
 HEIGHT_TOL_DEFAULT = 1e-3
 
-# `rough` is excluded from the ray-cast comparison and gets a stricter, separate
-# check instead (`test_rough_height_is_node_exact`). Between hfield nodes MuJoCo
-# triangulates each quad while the height model samples bilinearly, and on a noise
-# field the two differ by up to the local cell-to-cell variation -- tens of mm.
-# Asserting that loosely would hide real error; asserting node-exactness with no
-# tolerance pins everything that can actually break.
-HEIGHT_RAYCAST_EXEMPT = {"rough"}
+# Every tile, `rough` included, is held to the same bound. The heightmap sampler
+# reads the same quantised bytes MuJoCo decodes and interpolates cells the way
+# MuJoCo triangulates them, so there is no interpolation allowance to make: the
+# measured residual over a 169-point off-diagonal sweep is 0.000000 m.
+HEIGHT_TOL: dict[str, float] = {}
+HEIGHT_RAYCAST_EXEMPT: set[str] = set()
 
 # mj_ray degenerates on heightfields when a probe lands exactly on a triangle
 # edge: it misses and reports the hfield's base plane instead of the surface.
@@ -209,7 +208,7 @@ def test_surface_height_matches_emitted_geometry(tile_type: str, inverted: bool,
 
     params = _params(tile_type, inverted)
     model, data, tile = _build(tile_type, params, tmp_path)
-    tol = HEIGHT_TOL_DEFAULT
+    tol = HEIGHT_TOL.get(tile_type, HEIGHT_TOL_DEFAULT)
 
     worst_err, worst_at, compared = 0.0, None, 0
     for x, y in _interior_probes():

@@ -125,11 +125,17 @@ def test_query_is_zero_beyond_the_terrain(tmp_path):
         {"terrain": "flat"},
         {"terrain": "slope", "deg": 8.0},
         {"terrain": "sinusoidal", "amplitude": 0.09, "period": 1.5, "resolution": 64, "extent": 12.0},
+        {"terrain": "random", "amplitude": 0.12, "resolution": 64, "extent": 12.0},
     ],
-    ids=["flat", "slope", "sinusoidal"],
+    ids=["flat", "slope", "sinusoidal", "random"],
 )
-def test_smooth_uniform_forms_match_raycast(raw, tmp_path):
-    """Planes and a smooth heightfield, swept densely off the node grid."""
+def test_uniform_forms_match_raycast(raw, tmp_path):
+    """Every uniform form, swept densely off the node grid.
+
+    Heightfields are included at the same 2 mm bound as the planes because the
+    query interpolates cells the way MuJoCo does (main-diagonal triangles), not
+    bilinearly. Bilinear left a 30 mm max error on the `random` field.
+    """
     config = config_from_dict(raw)
     model, data = _compiled(config, tmp_path)
 

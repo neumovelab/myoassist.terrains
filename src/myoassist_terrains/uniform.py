@@ -32,6 +32,8 @@ from functools import lru_cache
 
 import numpy as np
 
+from myoassist_terrains import hfield
+
 
 def _smoothstep(t: np.ndarray) -> np.ndarray:
     """Hermite smoothstep on an array already clamped to [0, 1]."""
@@ -206,13 +208,6 @@ def surface_height(config, x: float, y: float) -> float:
     nrow, ncol = field.shape
     half = config.extent / 2.0
     # `_grid` lays the field out with columns along +x and rows along +y.
-    u = (x + half) / (2.0 * half)
-    v = (y + half) / (2.0 * half)
-    px = max(0.0, min(ncol - 1.0, u * (ncol - 1)))
-    py = max(0.0, min(nrow - 1.0, v * (nrow - 1)))
-    x0, y0 = int(np.floor(px)), int(np.floor(py))
-    x1, y1 = min(x0 + 1, ncol - 1), min(y0 + 1, nrow - 1)
-    tx, ty = px - x0, py - y0
-    lo = field[y0, x0] * (1.0 - tx) + field[y0, x1] * tx
-    hi = field[y1, x0] * (1.0 - tx) + field[y1, x1] * tx
-    return float(lo * (1.0 - ty) + hi * ty - dmin)
+    u = ((x + half) / (2.0 * half)) * (ncol - 1)
+    v = ((y + half) / (2.0 * half)) * (nrow - 1)
+    return float(hfield.sample(field, u, v) - dmin)

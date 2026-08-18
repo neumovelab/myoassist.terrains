@@ -40,6 +40,7 @@ import mujoco as mj
 import numpy as np
 from PIL import Image
 
+from myoassist_terrains import hfield
 from myoassist_terrains.noise import edge_taper, generate_complex_terrain
 from myoassist_terrains.tiles.base import BASELINE_Z, TileEmitResult
 
@@ -166,7 +167,7 @@ def _hfield_placement(quantized: np.ndarray, base_top_z: float, vertical_relief:
     hmin = float(normalized.min())
     hmax = float(normalized.max())
     span = max(hmax - hmin, 1e-9)
-    h_edge = float(normalized[0, 0])  # the taper drives the whole boundary to one value
+    h_edge = float(normalized[0, 0])  # the taper drives the whole boundary to one value, so any corner does
     geom_origin_z = base_top_z - vertical_relief * (h_edge - hmin) / span
     return geom_origin_z, hmin, span
 
@@ -185,33 +186,41 @@ def surface_height(
     Samples the same quantized heightmap `emit` writes and applies the same
     placement, so this reports what MuJoCo will actually build.
 
-    Note the y inversion. `Image.fromarray` writes array row 0 as the top image
-    row, and MuJoCo loads image row 0 into the hfield's LAST row, whose rows run
-    along +y. So world `local_y = -half` corresponds to array row `nrow - 1`, not
-    row 0 -- sampling it the other way round mirrors the whole tile.
+    The array-to-hfield row inversion is handled in `_hfield_grid`.
     """
     quantized = _heightmap_from_params({"vertical_relief": vertical_relief, "base_height": base_height, **params})
     origin, hmin, span = _hfield_placement(quantized, float(base_height), float(vertical_relief))
-    value = _bilinear_sample(quantized, local_x, local_y, tile_size)
+    value = _sample(quantized, local_x, local_y, tile_size)
     return float(origin + vertical_relief * (value - hmin) / span)
 
 
-def _bilinear_sample(quantized: np.ndarray, local_x: float, local_y: float, tile_size) -> float:
-    """Bilinear sample of the normalized heightmap at a tile-local coordinate."""
+def _hfield_grid(quantized: np.ndarray) -> np.ndarray:
+    """The heightmap in HFIELD row order, normalized to [0, 1].
+
+    `Image.fromarray` writes array row 0 as the top image row, and MuJoCo loads
+    image row 0 into the hfield's LAST row -- hfield rows run along +y. So the
+    array has to be flipped to get into hfield order.
+
+    Flipping the grid, rather than flipping the sample coordinate, matters: MuJoCo
+    splits each cell across its main diagonal, and negating the row coordinate
+    turns that main diagonal into the anti-diagonal. Sampling a flipped coordinate
+    against an unflipped grid therefore picks the wrong triangle, which left a
+    39 mm error on a 0.9 m relief tile.
+    """
+    return np.flipud(quantized).astype(np.float64) / 255.0
+
+
+def _sample(quantized: np.ndarray, local_x: float, local_y: float, tile_size) -> float:
+    """Normalized heightmap value at a tile-local coordinate.
+
+    Uses MuJoCo's own cell interpolation (see `myoassist_terrains.hfield`) on the
+    grid in hfield order, so the reported height matches the triangles MuJoCo
+    collides against.
+    """
     nrow, ncol = quantized.shape
-    u = (local_x / tile_size[0]) + 0.5
-    v = 0.5 - (local_y / tile_size[1])  # see surface_height's note on the y inversion
-    px = max(0.0, min(ncol - 1.0, u * (ncol - 1)))
-    py = max(0.0, min(nrow - 1.0, v * (nrow - 1)))
-
-    x0, y0 = int(np.floor(px)), int(np.floor(py))
-    x1, y1 = min(x0 + 1, ncol - 1), min(y0 + 1, nrow - 1)
-    tx, ty = px - x0, py - y0
-
-    grid = quantized.astype(np.float64) / 255.0
-    top = grid[y0, x0] * (1.0 - tx) + grid[y0, x1] * tx
-    bottom = grid[y1, x0] * (1.0 - tx) + grid[y1, x1] * tx
-    return float(top * (1.0 - ty) + bottom * ty)
+    u = ((local_x / tile_size[0]) + 0.5) * (ncol - 1)
+    v = ((local_y / tile_size[1]) + 0.5) * (nrow - 1)
+    return hfield.sample(_hfield_grid(quantized), u, v)
 
 
 def emit(
