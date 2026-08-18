@@ -61,18 +61,9 @@ PERIMETER_EXEMPT = {"gap"}
 # per end; inverted emits a four-sided base frame) and M5 fixed rough's (the geom
 # origin now inverts MuJoCo's renormalization). Every tile meets the contract.
 PERIMETER_XFAIL: dict[tuple[str, bool], str] = {}
-HEIGHT_XFAIL = {
-    ("stairs", False): "M1: missing +1 on the level, and dist measured from the tile edge not the stair span",
-    ("stairs", True): "M1: same, mirrored",
-    ("slope", False): "M1: the height model ignores cross_ratio, so it reports ramp height over the flat margin",
-    ("slope", True): "M1: same, inverted",
-    ("pyramid_stairs", False): "M6: int() truncates toward zero, promoting the flat outer margin to level 1",
-    ("pyramid_stairs", True): "M6: same, inverted",
-    ("rough", False): "M2: the heightmap is sampled y-mirrored relative to the emitted hfield",
-    ("boulders", False): "N-X1: scatter tiles report base_height instead of replaying their objects",
-    ("discrete_obstacles", False): "N-X1: same",
-    ("stepping_stones", False): "N-X1: same",
-}
+# Empty: the height model now lives on each tile beside its `emit` and shares the
+# same span arithmetic, so M1, M2, M6 and the scatter-tile gap are all closed.
+HEIGHT_XFAIL: dict[tuple[str, bool], str] = {}
 
 
 def _case(tile_type: str, inverted: bool, xfails: dict):

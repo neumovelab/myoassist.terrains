@@ -8,30 +8,21 @@ vertical direction.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Iterable
 
 import numpy as np
 
 from myoassist_terrains.config import TerrainConfig, TileConfig
 from myoassist_terrains.composer import compute_cell_layouts, resolve_tiles
-from myoassist_terrains.noise import edge_taper, generate_complex_terrain
 from myoassist_terrains.tiles import REGISTRY
 
 
-DEFAULT_SPEED_SCALE: dict[str, float] = {
-    "flat": 1.00,
-    "slope": 0.72,
-    "stairs": 0.55,
-    "pyramid_stairs": 0.50,
-    "rough": 0.42,
-    "discrete_obstacles": 0.38,
-    "stepping_stones": 0.35,
-    "boulders": 0.32,
-    "gap": 0.25,
-}
+# Per-tile-type speed multipliers, derived from the registry rather than restated
+# here: each tile declares its own SPEED_SCALE, so a tile registered through
+# `register_tile` is covered automatically and this table cannot fall out of step
+# with the tile set. Read it for reporting; pass `speed_scale=` to override.
+DEFAULT_SPEED_SCALE: dict[str, float] = {name: impl.default_speed_scale for name, impl in REGISTRY.items()}
 
 
 @dataclass(frozen=True)
@@ -135,21 +126,22 @@ def estimate_surface_height(
     local_y: float,
     tile_size: tuple[float, float],
 ) -> float:
-    """Approximate walkable surface height at a local tile coordinate."""
-    params = dict(REGISTRY[tile.type].default_params)
-    params.update(tile.params)
+    """Walkable surface height at a tile-local coordinate.
 
-    if tile.type == "flat":
-        return float(params.get("height", 0.0))
-    if tile.type == "slope":
-        return _slope_height(params, local_x, local_y, tile_size)
-    if tile.type == "stairs":
-        return _stairs_height(params, local_x, local_y, tile_size)
-    if tile.type == "pyramid_stairs":
-        return _pyramid_height(params, local_x, local_y, tile_size)
-    if tile.type == "rough":
-        return _rough_height(params, local_x, local_y, tile_size)
-    return float(params.get("base_height", 0.0))
+    Dispatches to the tile's own `surface_height`, which lives beside the `emit`
+    that placed the geometry. This module used to keep a second, hand-derived
+    model of every tile; it disagreed with the emitted surface for four of the
+    nine tile types, which is why the height model now belongs to the tile.
+
+    A tile registered without a `surface_height` falls back to its `base_height`
+    parameter, which is correct only for a flat-topped tile.
+    """
+    impl = REGISTRY[tile.type]
+    params = dict(impl.default_params)
+    params.update(tile.params)
+    if impl.surface_height_fn is None:
+        return float(params.get("height", params.get("base_height", 0.0)))
+    return float(impl.surface_height_fn(local_x, local_y, tile_size=tile_size, **params))
 
 
 def _tile_speed_jitter(row: int, col: int, amplitude: float, seed: int) -> float:
@@ -339,140 +331,3 @@ def surface_height_at(
         if abs(local_x) <= tw / 2 and abs(local_y) <= tl / 2:
             return estimate_surface_height(tile, local_x, local_y, config.grid.tile_size)
     return 0.0
-
-
-def _axis_value(axis: str, local_x: float, local_y: float) -> float:
-    assert axis in {"x", "y"}
-    return local_x if axis == "x" else local_y
-
-
-def _slope_height(params: dict, local_x: float, local_y: float, tile_size: tuple[float, float]) -> float:
-    axis = str(params.get("axis", "y"))
-    base = float(params.get("base_height", 0.0))
-    long_total = tile_size[1] if axis == "y" else tile_size[0]
-    local = _axis_value(axis, local_x, local_y)
-    plateau_ratio = float(params.get("plateau_ratio", 0.1))
-    ramp_len = (long_total - plateau_ratio * long_total) / 2.0
-    excursion = ramp_len * math.tan(math.radians(float(params.get("angle_deg", 12.0))))
-    if bool(params.get("inverted", False)):
-        excursion *= -1.0
-
-    dist_from_edge = min(local + long_total / 2.0, long_total / 2.0 - local)
-    t = max(0.0, min(1.0, dist_from_edge / ramp_len))
-    return base + excursion * t
-
-
-def _stairs_height(params: dict, local_x: float, local_y: float, tile_size: tuple[float, float]) -> float:
-    axis = str(params.get("axis", "y"))
-    base = float(params.get("base_height", 0.0))
-    long_total = tile_size[1] if axis == "y" else tile_size[0]
-    local = _axis_value(axis, local_x, local_y)
-    n_steps = int(params.get("n_steps", 6))
-    step_height = float(params.get("step_height", 0.15))
-    peak_width = float(params.get("peak_width", 0.4))
-    step_width = params.get("step_width")
-    if step_width is None:
-        step_width = (long_total - peak_width) / (2 * n_steps)
-    step_width = float(step_width)
-    dist_from_edge = min(local + long_total / 2.0, long_total / 2.0 - local)
-    level = min(n_steps, max(0, int(dist_from_edge / step_width)))
-    excursion = level * step_height
-    if bool(params.get("inverted", False)):
-        excursion *= -1.0
-    return base + excursion
-
-
-def _pyramid_height(params: dict, local_x: float, local_y: float, tile_size: tuple[float, float]) -> float:
-    base = float(params.get("base_height", 0.0))
-    n_steps = int(params.get("n_steps", 5))
-    step_height = float(params.get("step_height", 0.2))
-    step_width = float(params.get("step_width", 0.5))
-    outer_margin = float(params.get("outer_margin", 0.5))
-    edge_dist = min(
-        tile_size[0] / 2.0 - abs(local_x),
-        tile_size[1] / 2.0 - abs(local_y),
-    )
-    level = min(n_steps, max(0, int((edge_dist - outer_margin) / step_width) + 1))
-    excursion = level * step_height
-    if bool(params.get("inverted", False)):
-        excursion *= -1.0
-    return base + excursion
-
-
-def _rough_height(params: dict, local_x: float, local_y: float, tile_size: tuple[float, float]) -> float:
-    base = float(params.get("base_height", 0.0))
-    relief = float(params.get("vertical_relief", 0.8))
-    relief_mode = str(params.get("relief_mode", "centered"))
-    assert relief_mode in {"centered", "up", "down"}
-
-    heightmap = _rough_heightmap(
-        int(params.get("seed", 0)),
-        int(params.get("grid_resolution", 256)),
-        int(params.get("terrace_levels", 5)),
-        int(params.get("num_pits", 18)),
-        int(params.get("num_hills", 24)),
-        float(params.get("pit_threshold", 0.33)),
-        float(params.get("plateau_threshold", 0.68)),
-        float(params.get("edge_taper_frac", 0.10)),
-        relief_mode,
-    )
-    value = _bilinear_heightmap_sample(heightmap, local_x, local_y, tile_size)
-    if relief_mode == "up":
-        return base + value * relief
-    if relief_mode == "down":
-        return base - relief + value * relief
-    return base - relief / 2.0 + value * relief
-
-
-@lru_cache(maxsize=64)
-def _rough_heightmap(
-    seed: int,
-    grid_resolution: int,
-    terrace_levels: int,
-    num_pits: int,
-    num_hills: int,
-    pit_threshold: float,
-    plateau_threshold: float,
-    edge_taper_frac: float,
-    relief_mode: str,
-) -> np.ndarray:
-    raw = generate_complex_terrain(
-        shape=(grid_resolution, grid_resolution),
-        seed=seed,
-        terrace_levels=terrace_levels,
-        num_pits=num_pits,
-        num_hills=num_hills,
-        pit_threshold=pit_threshold,
-        plateau_threshold=plateau_threshold,
-        edge_taper_frac=0.0,
-    )
-    mask = edge_taper(raw.shape, taper_frac=edge_taper_frac)
-    if relief_mode == "up":
-        return raw * mask
-    if relief_mode == "down":
-        return 1.0 - (raw * mask)
-    return (raw - 0.5) * mask + 0.5
-
-
-def _bilinear_heightmap_sample(
-    heightmap: np.ndarray,
-    local_x: float,
-    local_y: float,
-    tile_size: tuple[float, float],
-) -> float:
-    h, w = heightmap.shape
-    u = (local_x / tile_size[0]) + 0.5
-    v = (local_y / tile_size[1]) + 0.5
-    px = max(0.0, min(w - 1.0, u * (w - 1)))
-    py = max(0.0, min(h - 1.0, v * (h - 1)))
-
-    x0 = int(math.floor(px))
-    y0 = int(math.floor(py))
-    x1 = min(x0 + 1, w - 1)
-    y1 = min(y0 + 1, h - 1)
-    tx = px - x0
-    ty = py - y0
-
-    a = float(heightmap[y0, x0]) * (1.0 - tx) + float(heightmap[y0, x1]) * tx
-    b = float(heightmap[y1, x0]) * (1.0 - tx) + float(heightmap[y1, x1]) * tx
-    return a * (1.0 - ty) + b * ty
