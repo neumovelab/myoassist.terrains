@@ -103,7 +103,7 @@ def surface_height(
 ) -> float:
     """Walkable surface height: the top of any boulder covering (x, y), else base.
 
-    Boulders are half-buried ellipsoids centred on `base_height`, so the exposed
+    Boulders are half-buried ellipsoids centered on `base_height`, so the exposed
     top at a point is `base + rz * sqrt(1 - (dx/rx)^2 - (dy/ry)^2)`.
     """
     size_range = tuple(size_range)

@@ -13,14 +13,17 @@
   content. Hand-edited; persists across regeneration of terrain content.
 
   Style mirrors the light-blue default from a downstream project terrain
-  (myoLeg models' terrain_config.xml). `terrain_mat` is retained because the
-  generated-terrain "uniform" palette reads its rgba at build time; `matfloor`
-  is the material referenced by the shipped default terrain (terrain/default.xml).
+  (myoLeg models' terrain_config.xml). `matfloor` is the material referenced by the
+  shipped default terrain (terrain/default.xml). `terrain_mat` is kept because the
+  render-side pointer references it; the generated-terrain "uniform" palette no
+  longer reads its rgba -- set that with `palette: {"uniform": [r, g, b, a]}` in the
+  terrain config instead.
 -->
 
 <mujocoinclude>
     <asset>
-        <!-- Uniform-palette source color for generated terrains (read at build time). -->
+        <!-- Referenced by the render-side terrain_config.xml. Generated terrains no
+             longer read this: set their colour with palette: {"uniform": [...]}. -->
         <material name="terrain_mat" rgba="0.31 0.663 0.667 1" texuniform="true"/>
 
         <!-- Light-blue default floor + skybox. -->

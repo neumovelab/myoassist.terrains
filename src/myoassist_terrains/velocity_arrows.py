@@ -48,7 +48,7 @@ def _ramp_rgb(t: float) -> tuple[float, float, float]:
 def rgba_for_speed(speed: float, lo: float, hi: float) -> str:
     """Red (slow) → yellow (mid) → green (fast) RGBA string.
 
-    Colour is stretched across the observed [lo, hi] speed range rather than
+    Color is stretched across the observed [lo, hi] speed range rather than
     [0, max], so the full red→green spread is used even when most samples
     cluster near the top speed. The yellow midpoint widens the legible range.
     """

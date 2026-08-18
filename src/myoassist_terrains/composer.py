@@ -61,12 +61,12 @@ _UNIFORM_MATERIAL_NAME = "myoassist_mat_uniform"
 # AND a style file happened to sit one level above it, so the same config
 # produced different colours depending on how it was built, and it never fired
 # at all through myoassist's compose (which passes a temp assets dir). An
-# explicit `palette` entry states the colour where you can see it.
+# explicit `palette` entry states the color where you can see it.
 _UNIFORM_RGBA: tuple[float, float, float, float] = (0.78, 0.78, 0.78, 1.0)
 _UNIFORM_SPECULAR = 0.5
 _UNIFORM_SHININESS = 0.5
 # Default floor styling for uniform terrain -- mirrors the legacy `matfloor`:
-# a built-in flat 2D texture (a muted blue-grey) with edge marks (a fine grid)
+# a built-in flat 2D texture (a muted blue-gray) with edge marks (a fine grid)
 # and low reflectance.  Overridable via config.texture / config.palette.
 _MATFLOOR_RGB1: tuple[float, float, float] = (0.353, 0.439, 0.529)
 _MATFLOOR_MARKRGB: tuple[float, float, float] = (0.8, 0.8, 0.8)
@@ -652,11 +652,11 @@ def compute_cell_layouts(config: TerrainConfig) -> dict[tuple[int, int], CellLay
 
 
 def _resolve_uniform_rgba(config: TerrainConfig) -> tuple[float, float, float, float]:
-    """The single colour used by `palette_preset="uniform"`.
+    """The single color used by `palette_preset="uniform"`.
 
     `palette` may carry one global override under `"uniform"` or `"terrain"`, which
     matches how the uniform-*terrain* path reads it. A per-tile-type entry cannot
-    apply to a single shared colour, so it is rejected rather than silently
+    apply to a single shared color, so it is rejected rather than silently
     dropped, which is what used to happen.
     """
     if config.palette_preset != "uniform":
@@ -665,9 +665,9 @@ def _resolve_uniform_rgba(config: TerrainConfig) -> tuple[float, float, float, f
     if per_type:
         noun = "entry" if len(per_type) == 1 else "entries"
         raise ValueError(
-            f"palette_preset='uniform' paints every tile one colour, so the per-type "
+            f"palette_preset='uniform' paints every tile one color, so the per-type "
             f"palette {noun} {per_type} cannot apply. Use palette={{'uniform': [r, g, b, a]}} "
-            f"for the shared colour, or palette_preset='diverse'/'custom' for per-type colours."
+            f"for the shared color, or palette_preset='diverse'/'custom' for per-type colours."
         )
     for key in ("uniform", "terrain"):
         if key in config.palette:
@@ -677,7 +677,7 @@ def _resolve_uniform_rgba(config: TerrainConfig) -> tuple[float, float, float, f
 
 
 def _validate_palette(config: TerrainConfig, placed_types: set[str]) -> None:
-    """`custom` means the config supplies every colour; `diverse` means defaults.
+    """`custom` means the config supplies every color; `diverse` means defaults.
 
     Without this the two presets were byte-identical, so `custom` was a value that
     only looked meaningful.
@@ -689,7 +689,7 @@ def _validate_palette(config: TerrainConfig, placed_types: set[str]) -> None:
         raise ValueError(
             f"palette_preset='custom' requires a palette entry for every placed tile type; "
             f"missing {missing}. Add them to `palette`, or use palette_preset='diverse' to "
-            f"take each tile's default colour."
+            f"take each tile's default color."
         )
 
 
@@ -720,7 +720,7 @@ def _register_palette_materials(
     """For diverse/custom modes, declare a per-tile-type material in the spec
     so geoms can reference it. Each material carries that tile's rgba (with
     user palette overrides) and specular/shininess from its TileImpl record.
-    In uniform mode, register a single shared material; the colour itself is set
+    In uniform mode, register a single shared material; the color itself is set
     per geom (see `_resolve_uniform_rgba`). Only tile types this config can place
     get a material, rather than every type in the registry.
     """

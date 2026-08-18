@@ -2,11 +2,18 @@
 
 **Modular procedural terrain generator for MuJoCo, designed to be used by [MyoAssist](https://github.com/neumovelab/myoassist) and other musculoskeletal-simulation projects within [MyoSuite](https://myosuite.readthedocs.io/en/latest/).**
 
-`myoassist_terrains` turns a small JSON description of a grid layout into a
-ready-to-include MuJoCo MJCF fragment containing tiles, connectors, materials
-and (optionally) heightfield assets. It supports explicit per-cell placement,
-weighted-random sampling per cell, parametric variation of every tile type,
-and a single shared texture for uniform-palette terrains.
+`myoassist_terrains` turns a small JSON description into a ready-to-include MuJoCo
+MJCF fragment. Two kinds of terrain are supported:
+
+- a **uniform** surface: one plane or one heightfield (`flat`, `slope`, `random`,
+  `sinusoidal`), suited to steady-state locomotion;
+- a **grid**: a tiled course built from nine tile types, with explicit per-cell
+  placement, weighted-random sampling, parametric variation of every tile, and a
+  shared texture for uniform-palette renders.
+
+It also answers where the ground is. `surface_height_at(config, x, y)` reports the
+walkable surface height from the config alone, so a consumer placing something on
+the terrain does not have to collision-probe a compiled model for it.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -21,9 +28,6 @@ and a single shared texture for uniform-palette terrains.
 
 ### Installation
 
-The package is published as a normal Python package and is utilized via
-`pip install -e .` (editable) or `pip install .` for a frozen build.
-
 ```bash
 git clone https://github.com/neumovelab/myoassist.terrains.git
 cd myoassist.terrains
@@ -31,14 +35,20 @@ pip install -e .
 
 # Optional extras
 pip install -e ".[render]"   # adds mediapy for ensemble renders
-pip install -e ".[dev]"      # adds pytest for unit tests
+pip install -e ".[dev]"      # adds pytest and ruff
 ```
 
 Requires Python `>=3.10` and `mujoco>=3.3.3`.
 
 ### Quick start
 
-Author a config:
+The shortest config is a uniform terrain:
+
+```json
+{ "terrain": "slope", "terrain_name": "gentle_climb", "deg": 8.0 }
+```
+
+A tiled course names its cells:
 
 ```json
 {
@@ -62,10 +72,10 @@ cd my_user_project        # contains terrain_config.xml + terrain_style.xml
 myoassist-terrains build path/to/first_terrain.json --activate
 ```
 
-The CLI writes `terrain/first_terrain.xml` into the project directory and (with
-`--activate`) updates the `<include file="terrain/first_terrain.xml"/>` line in
-`terrain_config.xml`. Any user model that includes `terrain_config.xml`
-now sees the new terrain.
+The CLI writes `terrain/first_terrain.xml` into the project and, with `--activate`,
+updates the `<include file="terrain/first_terrain.xml"/>` line in
+`terrain_config.xml`. Any model that includes `terrain_config.xml` then sees the new
+terrain. Use `--root <dir>` to build into a project from elsewhere.
 
 Preview it without a user model:
 
@@ -78,18 +88,22 @@ python -m mujoco.viewer --mjcf=terrain/first_terrain_preview.xml
 
 ## Contents
 
-Detailed documentation lives under [`docs/`](docs/):
+Documentation here is the developer reference. The narrative version, with figures,
+is on the [MyoAssist site](https://neumovelab.github.io/myoassist/modeling/terrains/).
 
-- [Concepts](docs/concepts.md) — grid, tiles, connectors, boundary contract, palette, texture, randomisation.
-- [Tile catalog](docs/tiles.md) — all nine tile types with parameter tables.
-- [Configuration schema](docs/configuration.md) — the full JSON config reference.
-- [CLI reference](docs/cli.md) — the `myoassist-terrains` commands.
-- [Python API](docs/python-api.md) — the stable public surface + examples.
-- [Velocity maps](docs/velocity-maps.md) — sampling and rendering 3D target-velocity fields over a terrain.
-- [Project layout for users](docs/project-layout.md) — expected project structure and include chaining.
-- [Utilities and example configs](docs/utilities.md) — bundled configs, style templates, and render tooling.
-- [Extending: adding a custom tile type](docs/extending.md) — registering new tile types.
-- [Development](docs/development.md) — running the test suite.
+- [Concepts](docs/concepts.md): grid, tiles, connectors, the boundary contract, palette, texture, randomization, surface queries.
+- [Tile catalog](docs/tiles.md): all nine tile types with parameter tables, generated from the registry.
+- [Configuration schema](docs/configuration.md): both config forms in full.
+- [CLI reference](docs/cli.md): the `myoassist-terrains` commands.
+- [Python API](docs/python-api.md): the stable public surface.
+- [Velocity maps](docs/velocity-maps.md): sampling and rendering 3D target-velocity fields over a terrain.
+- [Project layout for users](docs/project-layout.md): expected project structure and include chaining.
+- [Utilities and example configs](docs/utilities.md): bundled configs, style templates, render tooling.
+- [Extending](docs/extending.md): adding a custom tile type.
+- [Development](docs/development.md): running the suite, and what it covers.
+
+Changes, including the ones that alter emitted geometry, are recorded in
+[CHANGELOG.md](CHANGELOG.md).
 
 ---
 

@@ -7,6 +7,8 @@ exercising the same flow a user would on a fresh checkout.
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -46,3 +48,22 @@ def test_example_config_builds(config_path: Path, tmp_path: Path):
     spec = build_terrain(cfg, output_dir=tmp_path)
     model = spec.compile()
     assert model.ngeom > 0
+
+
+def test_tile_catalog_is_in_sync_with_the_registry():
+    """`docs/tiles.md`'s tables are generated; fail if they are stale.
+
+    Four of the review's documentation findings were the same problem: a
+    hand-maintained catalog drifting from the code it describes. `density` was
+    documented as an area fraction when it is a count per square meter, and
+    `boulders` as half-spheres taking a diameter range when they are ellipsoids
+    taking radii. Generating the tables removes the drift; this keeps the committed
+    file honest about it.
+    """
+    generator = Path(__file__).resolve().parents[1] / "utils" / "docs" / "_gen_tile_catalog.py"
+    result = subprocess.run(
+        [sys.executable, str(generator), "--check"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout

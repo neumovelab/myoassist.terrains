@@ -15,7 +15,7 @@ they differ in model density and the velocity overlay:
 
 Model paths ("26muscle_3D/...") and per-base instance qpos/cameras (8 each,
 4K) carry over unchanged. Tile color for both reads from
-utils/render/terrain_style.xml (terrain_mat rgba); skybox/fog/lights come from
+utils/render/terrain_style.xml (skybox/fog/lights); the terrain colour comes from
 utils/style/terrain_style.xml.
 
 Re-run after editing poses/cameras/overlay:
