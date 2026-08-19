@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "myoassist-terrains"
-version = "0.1.0"
+version = "0.2.0"
 description = "Modular procedural terrain generator for MuJoCo musculoskeletal simulation, designed to be consumed by MyoAssist."
 readme = "README.md"
 authors = [{ name = "NeuMove Laboratory, Northeastern University" }]

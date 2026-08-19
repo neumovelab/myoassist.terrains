@@ -7,6 +7,8 @@ what triggers publication.
 
 ## Unreleased
 
+## 0.2.0
+
 Remediation pass following a full framework review. Each entry below states what
 changed and, where it matters, the measurement behind it.
 
