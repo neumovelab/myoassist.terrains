@@ -7,6 +7,12 @@ what triggers publication.
 
 ## Unreleased
 
+## 1.0.0
+
+First stable release, cut in step with the MyoAssist 1.0.0 line. No functional changes since
+0.2.0; the public API (`build_terrain`, the config schema, the surface queries, and the tile
+registry) is considered stable.
+
 ## 0.2.0
 
 Remediation pass following a full framework review. Each entry below states what
